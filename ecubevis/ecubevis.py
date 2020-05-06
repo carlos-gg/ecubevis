@@ -113,6 +113,11 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
             raise ValueError('`variable` must be None, int or str')
     
     ### Slicing the variable (xr.Dataset) 
+    shape = data.data_vars.__getitem__(variable).shape
+    tini = data.data_vars.__getitem__(variable).time[0].values
+    tini = np.datetime_as_string(tini, unit='m')
+    tfin = data.data_vars.__getitem__(variable).time[-1].values
+    tfin = np.datetime_as_string(tfin, unit='m')
     var_array = slice_ndcube(data, slice_time, slice_level, slice_lat, 
                              slice_lon)
     if global_extent is None:
@@ -132,12 +137,22 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
     if not var_array.ndim in [3, 4]:
         raise TypeError('Variable is neither 3D nor 4D')
  
-    if verbose:
+    if verbose in [1, 2]:
         lname = var_array.long_name
         units = var_array.units
+        shape_slice = var_array.shape
+        # assuming the min temporal sampling unit is minutes
+        tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
+        tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m')
         dimp = '4D' if var_array.ndim == 4 else '3D'
-        print(f'{style.BOLD}{lname} {variable}{style.END} [{units}] is ' +
-                  f'a {style.BOLD}{dimp}{style.END} variable \n')
+        print(f'{style.BOLD}Name:{style.END} {lname} ({variable})')
+        print(f'{style.BOLD}Units:{style.END} {units}') 
+        print(f'{style.BOLD}Dimensionality:{style.END} {dimp}') 
+        print(f'{style.BOLD}Shape:{style.END} {shape}')
+        print(f'{style.BOLD}Shape (sliced):{style.END} {shape_slice}')
+        print(f'{style.BOLD}Time interval:{style.END} {tini} --> {tfin}')
+        print(f'{style.BOLD}Time interval (sliced):{style.END} {tini_slice} --> {tfin_slice}\n')
+    if verbose in [2]:
         print(data.coords)
         print(data.data_vars, '\n')
     
