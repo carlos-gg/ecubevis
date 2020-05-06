@@ -40,9 +40,9 @@ def slice_ndcube(ndarray, slice_time=None, slice_level=None, slice_lat=None,
 
 def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
                 groupby=None, slice_time=(0, 2), slice_level=(0, 2),
-                slice_lat=None, slice_lon=None, colorbar=True, 
-                share_dynamic_range=True, vmin=None, vmax=None, projection=None, 
-                coastline=False, global_extent=None, cmap='Blues_r', logz=False, 
+                slice_lat=None, slice_lon=None, colorbar=True, cmap='Blues_r', 
+                logz=False, share_dynamic_range=True, vmin=None, vmax=None, 
+                projection=None, coastline=False, global_extent=False, 
                 dynamic=True, dpi=80, verbose=True):
     """
     Parameters
@@ -120,11 +120,6 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
     tfin = np.datetime_as_string(tfin, unit='m')
     var_array = slice_ndcube(data, slice_time, slice_level, slice_lat, 
                              slice_lon)
-    if global_extent is None:
-        if slice_lat is None and slice_lon is None:
-            global_extent = True
-        else:
-            global_extent = False
 
     var_array = var_array.data_vars.__getitem__(variable)
     
@@ -149,9 +144,10 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         print(f'{style.BOLD}Units:{style.END} {units}') 
         print(f'{style.BOLD}Dimensionality:{style.END} {dimp}') 
         print(f'{style.BOLD}Shape:{style.END} {shape}')
-        print(f'{style.BOLD}Shape (sliced):{style.END} {shape_slice}')
+        print(f'{style.BOLD}Shape (sliced array):{style.END} {shape_slice}')
         print(f'{style.BOLD}Time interval:{style.END} {tini} --> {tfin}')
-        print(f'{style.BOLD}Time interval (sliced):{style.END} {tini_slice} --> {tfin_slice}\n')
+        msg = 'Time interval (sliced array):'
+        print(f'{style.BOLD}{msg}{style.END}{tini_slice} --> {tfin_slice}\n')
     if verbose in [2]:
         print(data.coords)
         print(data.data_vars, '\n')
