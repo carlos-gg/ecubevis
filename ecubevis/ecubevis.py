@@ -46,7 +46,7 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
                 slice_lat=None, slice_lon=None, colorbar=True, cmap='Blues_r', 
                 logz=False, share_dynamic_range=True, vmin=None, vmax=None, 
                 projection=None, coastline=False, global_extent=False, 
-                dynamic=True, dpi=80, verbose=True):
+                dynamic=True, dpi=80, plot_sizepx=800, verbose=True):
     """
     Parameters
     ----------
@@ -171,15 +171,15 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
     ### interactive plotting with slider(s) using bokeh
     if interactive:
         hv.extension('bokeh')
-        width = 800
-        height = int(np.round(width / sizexy_ratio))
-        sizeargs = dict(height=height, width=width)
-
-        if projection is not None:
-            project = True
-            sizeargs = dict()
+        if coastline or projection is not None:
+            width = plot_sizepx
+            height = width
         else:
-            project = False
+            width = plot_sizepx
+            height = int(np.round(width / sizexy_ratio))
+
+        sizeargs = dict(height=height, width=width)
+        project = False if projection is None else True
     
         return var_array.hvplot(kind='image', x=x, y=y, groupby=groupby, 
                                 dynamic=dynamic, colorbar=colorbar, cmap=cmap, 
