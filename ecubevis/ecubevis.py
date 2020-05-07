@@ -50,7 +50,7 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
     """
     Parameters
     ----------
-    data : xarray Dataset or str
+    data : xarray Dataset/Dataarray or str
         ERA5 variable(s) as Xarray (in memory) variable or as a string with 
         the path to the corresponding NETCDF file. Expected dimensions: 
         4D array [time, level, lat, lon] or 3D array [time, lat, lon].
@@ -101,9 +101,12 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         data = xr.open_dataset(data, engine="netcdf4", decode_times=True, 
                                chunks={'time': 1}) 
     
-    if not isinstance(data, xr.core.dataset.Dataset):
-        raise TypeError('`data` must be an Xarray Dataset')  
+    if not isinstance(data, (xr.Dataset, xr.DataArray)):
+        raise TypeError('`data` must be an Xarray Dataset/Dataarray')  
     
+    if isinstance(data, xr.DataArray):
+        data = data.to_dataset()
+
     ### Selecting the variable 
     if variable is None: # taking the first 3D or 4D data variable
         for i in data.data_vars:
@@ -115,7 +118,7 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         if not isinstance(variable, str):
             raise ValueError('`variable` must be None, int or str')
     
-    ### Slicing the variable (xr.Dataset) 
+    ### Getting info
     shape = data.data_vars.__getitem__(variable).shape
     tini = data.data_vars.__getitem__(variable).time[0].values
     tini = np.datetime_as_string(tini, unit='m')
@@ -123,7 +126,8 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
     tfin = np.datetime_as_string(tfin, unit='m')
     var_array = slice_ndcube(data, slice_time, slice_level, slice_lat, 
                              slice_lon)
-
+    
+    ### Slicing the array variable
     var_array = var_array.data_vars.__getitem__(variable)
     
     if groupby is None:
@@ -136,14 +140,18 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         raise TypeError('Variable is neither 3D nor 4D')
  
     if verbose in [1, 2]:
-        lname = var_array.long_name
-        units = var_array.units
+        try:
+            lname = var_array.long_name
+            units = var_array.units
+        except:
+            lname = variable
+            units = 'unknown' 
         shape_slice = var_array.shape
         # assuming the min temporal sampling unit is minutes
         tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
         tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m')
         dimp = '4D' if var_array.ndim == 4 else '3D'
-        print(f'{style.BOLD}Name:{style.END} {lname} ({variable})')
+        print(f'{style.BOLD}Name:{style.END} {variable}, {lname}')
         print(f'{style.BOLD}Units:{style.END} {units}') 
         print(f'{style.BOLD}Dimensionality:{style.END} {dimp}') 
         print(f'{style.BOLD}Shape:{style.END} {shape}')
