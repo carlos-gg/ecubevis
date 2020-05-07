@@ -26,7 +26,10 @@ def slice_ndcube(ndarray, slice_time=None, slice_level=None, slice_lat=None,
     """ 
     nadarray = check_coords(ndarray)
     if slice_time is not None and 'time' in ndarray.coords:
-        ndarray = ndarray.isel(time=slice(*slice_time))
+        if isinstance(slice_time, tuple) and isinstance(slice_time[0], str):
+            ndarray = ndarray.sel(time=slice(*slice_time))
+        elif isinstance(slice_time, tuple) and isinstance(slice_time[0], int):
+            ndarray = ndarray.isel(time=slice(*slice_time))
     if slice_level is not None and 'level' in ndarray.coords:
         ndarray = ndarray.isel(level=slice(*slice_level))
     if slice_lat is not None and 'lat' in ndarray.coords:
