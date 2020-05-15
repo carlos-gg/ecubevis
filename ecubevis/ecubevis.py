@@ -20,9 +20,31 @@ class style:
 def slice_ndcube(ndarray, slice_time=None, slice_level=None, slice_lat=None, 
                  slice_lon=None):
     """  
+    Slice an N-dimensional Xarray Dataset across its dimensions (time, level,
+    lat or lon, if present). This function is able to wrap selection assuming 
+    360 degrees, which is not strighformard with Xarray. 
+
     Parameters
     ----------
-    ndarray
+    ndarray : xarray Dataset
+        Input N-dimensional dataset.
+    slice_time : tuple of int or str
+        Tuple with initial and final values for slicing the time dimension. 
+    slice_level : tuple of int
+        Tuple with initial and final values for slicing the level dimension.
+    slice_lat : tuple of int
+        Tuple with initial and final values for slicing the lat dimension.
+    slice_lon : tuple of int
+        Tuple with initial and final values for slicing the lon dimension.
+
+    Returns
+    -------
+    ndarray : xarray Dataset
+        When any of the arguments ``slice_time``, ``slice_level``, 
+        ``slice_lat``, ``slice_lon`` is defined (not None) the returned 
+        ``ndarray`` is the sliced input. If the slicing arguments are None the
+        function returns the input Dataset.
+
     """ 
     nadarray = check_coords(ndarray)
     if slice_time is not None and 'time' in ndarray.coords:
