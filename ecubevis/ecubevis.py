@@ -46,7 +46,8 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
                 slice_lat=None, slice_lon=None, colorbar=True, cmap='Blues_r', 
                 logz=False, share_dynamic_range=True, vmin=None, vmax=None, 
                 projection=None, coastline=False, global_extent=False, 
-                dynamic=True, dpi=80, plot_sizepx=800, verbose=True):
+                dynamic=True, dpi=80, plot_sizepx=800, widget_location='right', 
+                verbose=True):
     """
     Parameters
     ----------
@@ -184,8 +185,8 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         return var_array.hvplot(kind='image', x=x, y=y, groupby=groupby, 
                                 dynamic=dynamic, colorbar=colorbar, cmap=cmap, 
                                 shared_axes=True, legend=True, logz=logz, 
-                                widget_location='top', project=project, 
-                                projection=projection, 
+                                widget_location=widget_location, 
+                                project=project, projection=projection, 
                                 global_extent=global_extent, 
                                 coastline=coastline, **sizeargs)
         
