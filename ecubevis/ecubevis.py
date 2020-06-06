@@ -20,9 +20,9 @@ class style:
 def slice_ndcube(ndarray, slice_time=None, slice_level=None, slice_lat=None, 
                  slice_lon=None):
     """  
-    Slice an N-dimensional Xarray Dataset across its dimensions (time, level,
+    Slice an N-dimensional ``Xarray`` Dataset across its dimensions (time, level,
     lat or lon, if present). This function is able to wrap selection assuming 
-    360 degrees, which is not strighformard with Xarray. 
+    360 degrees, which is not strighformard with ``Xarray``. 
 
     Parameters
     ----------
@@ -71,12 +71,22 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
                 dynamic=True, dpi=80, plot_sizepx=800, widget_location='right', 
                 verbose=True):
     """
+    Plot an in-memory n-dimensional datacube. The datacube is loaded through 
+    ``Xarray`` and therefore supports formats such as NetCDF, IRIS, GRIB.
+
     Parameters
     ----------
     data : xarray Dataset/Dataarray or str
         ERA5 variable(s) as Xarray (in memory) variable or as a string with 
-        the path to the corresponding NETCDF file. Expected dimensions: 
+        the path to the corresponding NetCDF file. Expected dimensions: 
         4D array [time, level, lat, lon] or 3D array [time, lat, lon].
+    interactive : bool
+        Whether to plot using an interactive plot (using ``hvplot``) with a 
+        slider across the dimension set by ``groupby`` or an static mosaic 
+        (using ``matplotlib``). 
+    variable : str or int
+        The name of the variable to be plotted or the index at which it is 
+        located. If None, the first 3D or 4D variable is selected.
     cmap : str
         Colormap, eg. RdBu_r, viridis.  
     projection : cartopy.crs projection
