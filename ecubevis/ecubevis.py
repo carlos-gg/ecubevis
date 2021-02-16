@@ -1,4 +1,5 @@
 import numpy as np
+from glob import glob
 import xarray as xr
 import hvplot.xarray 
 import cartopy.crs as ccrs
@@ -7,9 +8,12 @@ import matplotlib.colors as colors
 from matplotlib.pyplot import figure, show, savefig, close, colorbar, subplots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 __all__ = ['plot_ndcube',
-           'slice_ndcube']
+           'slice_ndcube',
+           'load_transform_mfdataset']
 
 
 class style:
@@ -17,25 +21,87 @@ class style:
    END = '\033[0m'
     
 
+def load_transform_mfdataset(dir_path, dim, transform_func=None, 
+                             transform_params={}):
+    """
+    Read a multi-file distributed N-dimensional ``xarray`` dataset.
+
+    Parameters
+    ----------
+    dir_path : str
+        Path to the files. 
+    dim : str
+        Dimension to concatenate along.
+    transform_func : function or None
+        Transform function to be applied to each file before loading it. 
+    transform_params : dict, optional
+        Parameters of the transform function.
+
+    Returns
+    -------
+    combined : xarray Dataset
+        Combined dataset.
+
+    Notes
+    -----
+    https://xarray.pydata.org/en/stable/io.html#reading-multi-file-datasets
+    """
+    def process_one_path(file_path):
+        # use a context manager, to ensure the file gets closed after use
+        with xr.open_dataset(file_path) as ds:
+            if transform_func is not None:
+                ds = transform_func(ds, **transform_params)
+            # load all data from the transformed dataset, to ensure we can
+            # use it after closing each original file
+            ds.load()
+            return ds
+
+    dir_path = dir_path + '/*.nc'
+    paths = sorted(glob(dir_path))
+    datasets = [process_one_path(p) for p in paths]
+    combined = xr.concat(datasets, dim)
+    return combined
+
+
+def check_coords(ndarray):
+    standard_names = ['lat', 'lon', 'level', 'time']
+    alternative_names = ['latitude', 'longitude', 'height', 'frequency']
+
+    for c in ndarray.coords:
+        if c not in standard_names + alternative_names:
+            msg = f'Xarray Dataset/Dataarray contains unknown coordinates. '
+            msg += f'Must be one of: {standard_names} or {alternative_names}'
+            raise ValueError(msg)
+
+    for i, altname in enumerate(alternative_names):
+        if altname in ndarray.coords:
+            ndarray = ndarray.rename({alternative_names[i]: standard_names[i]})
+    return ndarray
+
+
 def slice_ndcube(ndarray, slice_time=None, slice_level=None, slice_lat=None, 
                  slice_lon=None):
     """  
-    Slice an N-dimensional ``Xarray`` Dataset across its dimensions (time, level,
+    Slice an N-dimensional ``xarray`` Dataset across its dimensions (time, level,
     lat or lon, if present). This function is able to wrap selection assuming 
-    360 degrees, which is not strighformard with ``Xarray``. 
+    360 degrees, which is not strighformard with ``xarray``. 
 
     Parameters
     ----------
     ndarray : xarray Dataset
         Input N-dimensional dataset.
-    slice_time : tuple of int or str
-        Tuple with initial and final values for slicing the time dimension. 
-    slice_level : tuple of int
-        Tuple with initial and final values for slicing the level dimension.
-    slice_lat : tuple of int
-        Tuple with initial and final values for slicing the lat dimension.
-    slice_lon : tuple of int
-        Tuple with initial and final values for slicing the lon dimension.
+    slice_time : tuple of int or str or None, optional
+        Tuple with initial and final values for slicing the time dimension. If 
+        None, the array is not sliced accross this dimension.
+    slice_level : tuple of int or None, optional
+        Tuple with initial and final values for slicing the level dimension. If 
+        None, the array is not sliced accross this dimension.
+    slice_lat : tuple of int or None, optional
+        Tuple with initial and final values for slicing the lat dimension. If 
+        None, the array is not sliced accross this dimension.
+    slice_lon : tuple of int or None, optional
+        Tuple with initial and final values for slicing the lon dimension. If 
+        None, the array is not sliced accross this dimension.
 
     Returns
     -------
@@ -46,20 +112,30 @@ def slice_ndcube(ndarray, slice_time=None, slice_level=None, slice_lat=None,
         function returns the input Dataset.
 
     """ 
-    nadarray = check_coords(ndarray)
+    ndarray = check_coords(ndarray)
     if slice_time is not None and 'time' in ndarray.coords:
         if isinstance(slice_time, tuple) and isinstance(slice_time[0], str):
             ndarray = ndarray.sel(time=slice(*slice_time))
         elif isinstance(slice_time, tuple) and isinstance(slice_time[0], int):
             ndarray = ndarray.isel(time=slice(*slice_time))
+    
     if slice_level is not None and 'level' in ndarray.coords:
         ndarray = ndarray.isel(level=slice(*slice_level))
+    
     if slice_lat is not None and 'lat' in ndarray.coords:
         ndarray = ndarray.sel(dict(lat=ndarray.lat[(ndarray.lat > slice_lat[0]) & 
                                                    (ndarray.lat < slice_lat[1])]))
+    
     if slice_lon is not None and 'lon' in ndarray.coords:
-        ndarray = lon_wrap_slice(ndarray, wrap=360, indices=(slice_lon[0], 
-                                                             slice_lon[1]))
+        # -180 to 180
+        if ndarray.lon[0].values < 0:
+            ndarray = ndarray.sel(dict(lon=ndarray.lon[(ndarray.lon > slice_lon[0]) & 
+                                                       (ndarray.lon < slice_lon[1])]))
+        # 0 to 360
+        else:
+            ndarray = lon_wrap_slice(ndarray, wrap=360, indices=(slice_lon[0], 
+                                                                 slice_lon[1]))
+    
     return ndarray
 
 
@@ -72,7 +148,7 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
                 verbose=True):
     """
     Plot an in-memory n-dimensional datacube. The datacube is loaded through 
-    ``Xarray`` and therefore supports formats such as NetCDF, IRIS, GRIB.
+    ``xarray`` and therefore supports formats such as NetCDF, IRIS or GRIB.
 
     Parameters
     ----------
@@ -80,14 +156,28 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         ERA5 variable(s) as Xarray (in memory) variable or as a string with 
         the path to the corresponding NetCDF file. Expected dimensions: 
         4D array [time, level, lat, lon] or 3D array [time, lat, lon].
-    interactive : bool
+    interactive : bool optional
         Whether to plot using an interactive plot (using ``hvplot``) with a 
         slider across the dimension set by ``groupby`` or an static mosaic 
         (using ``matplotlib``). 
-    variable : str or int
+    variable : str or int or None, optional
         The name of the variable to be plotted or the index at which it is 
         located. If None, the first 3D or 4D variable is selected.
-    cmap : str
+    slice_time : tuple of int or str or None, optional
+        Tuple with initial and final values for slicing the time dimension. If 
+        None, the array is not sliced accross this dimension.
+    slice_level : tuple of int or None, optional
+        Tuple with initial and final values for slicing the level dimension. If 
+        None, the array is not sliced accross this dimension.
+    slice_lat : tuple of int or None, optional
+        Tuple with initial and final values for slicing the lat dimension. If 
+        None, the array is not sliced accross this dimension.
+    slice_lon : tuple of int or None, optional
+        Tuple with initial and final values for slicing the lon dimension. If 
+        None, the array is not sliced accross this dimension.
+    colorbar : bool optional
+        To show a colorbar.
+    cmap : str optional
         Colormap, eg. RdBu_r, viridis.  
     projection : cartopy.crs projection
         According to Cartopy's documentation it can be one of the following
@@ -157,7 +247,8 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
     tini = np.datetime_as_string(tini, unit='m')
     tfin = data.data_vars.__getitem__(variable).time[-1].values
     tfin = np.datetime_as_string(tfin, unit='m')
-    var_array = slice_ndcube(data, slice_time, slice_level, slice_lat, 
+    var_array = check_coords(data)
+    var_array = slice_ndcube(var_array, slice_time, slice_level, slice_lat, 
                              slice_lon)
     
     ### Slicing the array variable
@@ -196,7 +287,6 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         print(data.coords)
         print(data.data_vars, '\n')
     
-    var_array = check_coords(var_array)
     sizey = var_array.lat.shape[0]
     sizex = var_array.lon.shape[0]
     sizexy_ratio = sizex / sizey
@@ -314,18 +404,6 @@ def plot_mosaic(ndarray, show_colorbar=True, dpi=100, cmap='viridis',
         close()
     else:
         show()
-
-
-def check_coords(ndarray):
-    if 'lat' in ndarray.coords and 'lon' in ndarray.coords:
-        return ndarray
-    else:
-        if 'latitude' in ndarray.coords and 'longitude' in ndarray.coords:
-            return ndarray.rename({'latitude':'lat', 'longitude':'lon'})
-        else:
-            msg = 'Xarray file does not contain coordinates named lat/lon or '
-            msg += 'latitude/longitude'
-            raise ValueError(msg)
 
 
 def lon_wrap_slice(ds, wrap=360, dim='lon', indices=(-25,45)):
