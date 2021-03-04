@@ -1,6 +1,6 @@
 # Welcome to the repository of ecubevis
 
-`ecubevis`: Earth CUBE VISualization with Python. Intended for the interactive exploration of n-dimensional (2d, 3d or 4d spatio-temporal) arrays on Jupyterlab.
+`ecubevis`: Earth CUBE VISualization with Python. Intended for the interactive exploration of n-dimensional (2D, 3D or 4D spatio-temporal) arrays on Jupyterlab.
 
 ## For BSC-ES users
 
@@ -15,3 +15,21 @@ module load jupyterlab/3.0.9-foss-2018b-Python-3.7.0
 The modules should have the same names on Nord3 (just "use" the Nord3 modules repository). 
 
 That's it, you are ready to import `ecubevis` from this folder (assumining you've clones or downloaded this git repository). 
+
+## How to use
+
+... WIP ... 
+
+## Screenshots
+
+`ecubevis` will allow you to:
+
+* Create interactive plots of in-memory 3D and 4D `xarray` Datasets/Dataarrays. The sliders, thanks to `hvplot`, allow to easily explore the data as 2D arrays across the time and vertical level dimensions.
+
+![1](./screenshots/screenshot1.png)
+
+![2](./screenshots/screenshot2.png)
+
+* Create static mosaics of in-memory 3D and 4D `xarray` Datasets/Dataarrays.
+
+![2](./screenshots/screenshot3.png)
