@@ -1,5 +1,5 @@
 import numpy as np
-from glob import glob
+from numpy.core.fromnumeric import size
 import xarray as xr
 import hvplot.xarray 
 import cartopy.crs as ccrs
@@ -7,13 +7,13 @@ import holoviews as hv
 import matplotlib.colors as colors
 from matplotlib.pyplot import figure, show, savefig, close, colorbar, subplots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from .io import load_transform_mfdataset
+from .utils import check_coords, slice_dataset
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-__all__ = ['plot_ndcube',
-           'slice_ndcube',
-           'load_transform_mfdataset']
+__all__ = ['plot_dataset']
 
 
 class style:
@@ -21,134 +21,17 @@ class style:
    END = '\033[0m'
     
 
-def load_transform_mfdataset(dir_path, dim, transform_func=None, 
-                             transform_params={}):
+def plot_dataset(data, interactive=True, variable=None, groupby=None, 
+                 slice_time=None, slice_level=None, slice_lat=None, 
+                 slice_lon=None, colorbar=True, cmap='Blues_r', 
+                 logz=False, share_dynamic_range=True, vmin=None, vmax=None, 
+                 projection=None, coastline=False, global_extent=False, 
+                 dynamic=True, dpi=80, plot_sizepx=1000, widget_location='top', 
+                 verbose=True):
     """
-    Read a multi-file distributed N-dimensional ``xarray`` dataset.
-
-    Parameters
-    ----------
-    dir_path : str
-        Path to the files. 
-    dim : str
-        Dimension to concatenate along.
-    transform_func : function or None
-        Transform function to be applied to each file before loading it. 
-    transform_params : dict, optional
-        Parameters of the transform function.
-
-    Returns
-    -------
-    combined : xarray Dataset
-        Combined dataset.
-
-    Notes
-    -----
-    https://xarray.pydata.org/en/stable/io.html#reading-multi-file-datasets
-    """
-    def process_one_path(file_path):
-        # use a context manager, to ensure the file gets closed after use
-        with xr.open_dataset(file_path) as ds:
-            if transform_func is not None:
-                ds = transform_func(ds, **transform_params)
-            # load all data from the transformed dataset, to ensure we can
-            # use it after closing each original file
-            ds.load()
-            return ds
-
-    dir_path = dir_path + '/*.nc'
-    paths = sorted(glob(dir_path))
-    datasets = [process_one_path(p) for p in paths]
-    combined = xr.concat(datasets, dim)
-    return combined
-
-
-def check_coords(ndarray):
-    standard_names = ['lat', 'lon', 'level', 'time']
-    alternative_names = ['latitude', 'longitude', 'height', 'frequency']
-
-    for c in ndarray.coords:
-        if c not in standard_names + alternative_names:
-            msg = f'Xarray Dataset/Dataarray contains unknown coordinates. '
-            msg += f'Must be one of: {standard_names} or {alternative_names}'
-            raise ValueError(msg)
-
-    for i, altname in enumerate(alternative_names):
-        if altname in ndarray.coords:
-            ndarray = ndarray.rename({alternative_names[i]: standard_names[i]})
-    return ndarray
-
-
-def slice_ndcube(ndarray, slice_time=None, slice_level=None, slice_lat=None, 
-                 slice_lon=None):
-    """  
-    Slice an N-dimensional ``xarray`` Dataset across its dimensions (time, level,
-    lat or lon, if present). This function is able to wrap selection assuming 
-    360 degrees, which is not strighformard with ``xarray``. 
-
-    Parameters
-    ----------
-    ndarray : xarray Dataset
-        Input N-dimensional dataset.
-    slice_time : tuple of int or str or None, optional
-        Tuple with initial and final values for slicing the time dimension. If 
-        None, the array is not sliced accross this dimension.
-    slice_level : tuple of int or None, optional
-        Tuple with initial and final values for slicing the level dimension. If 
-        None, the array is not sliced accross this dimension.
-    slice_lat : tuple of int or None, optional
-        Tuple with initial and final values for slicing the lat dimension. If 
-        None, the array is not sliced accross this dimension.
-    slice_lon : tuple of int or None, optional
-        Tuple with initial and final values for slicing the lon dimension. If 
-        None, the array is not sliced accross this dimension.
-
-    Returns
-    -------
-    ndarray : xarray Dataset
-        When any of the arguments ``slice_time``, ``slice_level``, 
-        ``slice_lat``, ``slice_lon`` is defined (not None) the returned 
-        ``ndarray`` is the sliced input. If the slicing arguments are None the
-        function returns the input Dataset.
-
-    """ 
-    ndarray = check_coords(ndarray)
-    if slice_time is not None and 'time' in ndarray.coords:
-        if isinstance(slice_time, tuple) and isinstance(slice_time[0], str):
-            ndarray = ndarray.sel(time=slice(*slice_time))
-        elif isinstance(slice_time, tuple) and isinstance(slice_time[0], int):
-            ndarray = ndarray.isel(time=slice(*slice_time))
-    
-    if slice_level is not None and 'level' in ndarray.coords:
-        ndarray = ndarray.isel(level=slice(*slice_level))
-    
-    if slice_lat is not None and 'lat' in ndarray.coords:
-        ndarray = ndarray.sel(dict(lat=ndarray.lat[(ndarray.lat > slice_lat[0]) & 
-                                                   (ndarray.lat < slice_lat[1])]))
-    
-    if slice_lon is not None and 'lon' in ndarray.coords:
-        # -180 to 180
-        if ndarray.lon[0].values < 0:
-            ndarray = ndarray.sel(dict(lon=ndarray.lon[(ndarray.lon > slice_lon[0]) & 
-                                                       (ndarray.lon < slice_lon[1])]))
-        # 0 to 360
-        else:
-            ndarray = lon_wrap_slice(ndarray, wrap=360, indices=(slice_lon[0], 
-                                                                 slice_lon[1]))
-    
-    return ndarray
-
-
-def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
-                groupby=None, slice_time=(0, 2), slice_level=(0, 2),
-                slice_lat=None, slice_lon=None, colorbar=True, cmap='Blues_r', 
-                logz=False, share_dynamic_range=True, vmin=None, vmax=None, 
-                projection=None, coastline=False, global_extent=False, 
-                dynamic=True, dpi=80, plot_sizepx=800, widget_location='right', 
-                verbose=True):
-    """
-    Plot an in-memory n-dimensional datacube. The datacube is loaded through 
-    ``xarray`` and therefore supports formats such as NetCDF, IRIS or GRIB.
+    Plot an n-dimensional dataset (in-memory or from a path). The dataset is 
+    loaded through ``xarray`` and therefore supports formats such as NetCDF, 
+    IRIS or GRIB.
 
     Parameters
     ----------
@@ -248,8 +131,8 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
     tfin = data.data_vars.__getitem__(variable).time[-1].values
     tfin = np.datetime_as_string(tfin, unit='m')
     var_array = check_coords(data)
-    var_array = slice_ndcube(var_array, slice_time, slice_level, slice_lat, 
-                             slice_lon)
+    var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, 
+                              slice_lon)
     
     ### Slicing the array variable
     var_array = var_array.data_vars.__getitem__(variable)
@@ -296,7 +179,8 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         hv.extension('bokeh')
         if coastline or projection is not None:
             width = plot_sizepx
-            height = width
+            height = int(np.round(width / sizexy_ratio))
+            height += int(height * 0.2)
         else:
             width = plot_sizepx
             height = int(np.round(width / sizexy_ratio))
@@ -304,7 +188,7 @@ def plot_ndcube(data, interactive=True, variable=None, x='lon', y='lat',
         sizeargs = dict(height=height, width=width)
         project = False if projection is None else True
     
-        return var_array.hvplot(kind='image', x=x, y=y, groupby=groupby, 
+        return var_array.hvplot(kind='image', x='lon', y='lat', groupby=groupby, 
                                 dynamic=dynamic, colorbar=colorbar, cmap=cmap, 
                                 shared_axes=True, legend=True, logz=logz, 
                                 widget_location=widget_location, 
@@ -406,50 +290,3 @@ def plot_mosaic(ndarray, show_colorbar=True, dpi=100, cmap='viridis',
         show()
 
 
-def lon_wrap_slice(ds, wrap=360, dim='lon', indices=(-25,45)):
-    """
-    wrap selection assuming 360 degrees. xarray core is not likely to include 
-    this. Shame as would make nice method. Maybe someone builds something on 
-    xarray that supports geographical co-ordinates..
-    
-    Parameters
-    ----------
-    :param ds: dataset
-    :param wrap: default 360 -- period of co-ordinate.
-    
-    Notes
-    -----
-    https://github.com/pangeo-data/pangeo/issues/670
-    https://gis.stackexchange.com/questions/205871/xarray-slicing-across-the-antimeridian
-
-    # adjust the coordinate system of your data so it is centered over the anti-meridian instead
-    # https://gis.stackexchange.com/questions/205871/xarray-slicing-across-the-antimeridian
-    # t2m_83 = t2m_83.assign_coords(lon=(t2m_83.lon % 360)).roll(lon=(t2m_83.dims['lon'] // 2))
-
-    """    
-    sliceObj = slice(*indices)
-
-    l = (ds[dim] + 2 * wrap) % wrap
-    lstart = (sliceObj.start + 2 * wrap) % wrap
-    lstop = (sliceObj.stop + 2 * wrap) % wrap
-    if lstop > lstart:
-        ind = (l <= lstop) & (l >= lstart)
-    else:
-        ind = (l <= lstop) | (l >= lstart)
-
-    result = ds.isel(**{dim: ind})
-
-    # need to make data contigious which may require rolling it and adjusting 
-    # co-ord values.
-
-    # step 1 work out how much to roll co-ordinate system. Need to find "break"
-    # break is last place in array where ind goes from False to True
-    brk = np.max(np.where(ind.values[:-1] != ind.values[1:]))
-    brk = len(l) - brk - 1
-    result = result.roll(**{dim: brk})
-    # step 2 fix co-ords
-    v = result[dim].values
-    v = np.where(v < 180., v, v - 360)
-    result = result.assign_coords(**{dim: v})
-
-    return result

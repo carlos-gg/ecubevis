@@ -40,11 +40,11 @@ setup(
     install_requires=[
         'numpy ~= 1.18',
         'matplotlib >= 2.2',
-        'xarray == 0.15.1',
-        'hvplot == 0.5.2',
-        'holoviews == 1.13.2',
-        'bokeh == 2.0.1',
-        'pyviz_comms == 0.7.4'
+        'xarray ~= 0.15.1',
+        'hvplot ~= 0.5.2',
+        'holoviews ~= 1.13.2',
+        'bokeh ~= 2.0.1',
+        'pyviz_comms ~= 0.7.4'
         ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
