@@ -1,11 +1,11 @@
 import numpy as np
-from numpy.core.fromnumeric import size
 import xarray as xr
 import hvplot.xarray 
-import cartopy.crs as ccrs
+import cartopy.crs as crs
 import holoviews as hv
 import matplotlib.colors as colors
-from matplotlib.pyplot import figure, show, savefig, close, colorbar, subplots
+from matplotlib.pyplot import figure, show, savefig, close, subplots
+from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from .io import load_transform_mfdataset
 from .utils import check_coords, slice_dataset
@@ -13,21 +13,56 @@ from .utils import check_coords, slice_dataset
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-__all__ = ['plot_dataset']
+__all__ = ['plot_dataset',
+           'plot_ndarray',
+           'cm', 
+           'crs']
 
 
-class style:
-   BOLD = '\033[1m'
-   END = '\033[0m'
+def _bold(string):
+   return '\033[1m' + string + '\033[0m'
+
+
+def plot_ndarray(data, interactive=True):
+    """
+    Plot a 2D or 3D `numpy` array or a tuple of 2D `numpy` arrays. 
     
+    Parameters
+    ----------
+    interactive : bool, optional
+        Whether to plot using an interactive (with ``bokeh``) or static (with
+        ``matplotlib``) plot. In the case of a 3D ndarray, a slider will be used 
+        to explore the data across the 1 dimension (time or vertical level). In 
+        the case of a 3D ndarray, a slider will be used to explore the data 
+        across the 1 and 2 dimensions. 
+    """
+    pass
 
-def plot_dataset(data, interactive=True, variable=None, groupby=None, 
-                 slice_time=None, slice_level=None, slice_lat=None, 
-                 slice_lon=None, colorbar=True, cmap='Blues_r', 
-                 logz=False, share_dynamic_range=True, vmin=None, vmax=None, 
-                 projection=None, coastline=False, global_extent=False, 
-                 dynamic=True, dpi=80, plot_sizepx=1000, widget_location='top', 
-                 verbose=True):
+
+def plot_dataset(
+    data, 
+    interactive=True, 
+    variable=None, 
+    groupby=None, 
+    slice_time=None, 
+    slice_level=None, 
+    slice_lat=None, 
+    slice_lon=None, 
+    colorbar=True, 
+    cmap='viridis', 
+    logz=False, 
+    share_dynamic_range=True, 
+    vmin=None, 
+    vmax=None, 
+    projection=None, 
+    coastline=False, 
+    global_extent=False, 
+    dynamic=True, 
+    dpi=80, 
+    max_static_subplots=10,
+    plot_sizepx=1000, 
+    widget_location='top', 
+    verbose=True):
     """
     Plot an n-dimensional dataset (in-memory or from a path). The dataset is 
     loaded through ``xarray`` and therefore supports formats such as NetCDF, 
@@ -60,9 +95,9 @@ def plot_dataset(data, interactive=True, variable=None, groupby=None,
         None, the array is not sliced accross this dimension.
     colorbar : bool optional
         To show a colorbar.
-    cmap : str optional
-        Colormap, eg. RdBu_r, viridis.  
-    projection : cartopy.crs projection
+    cmap : str or matplotlib.cm, optional
+        Colormap, eg. viridis" or ecv.cm.viridis.  
+    projection : cartopy.crs projection, optional
         According to Cartopy's documentation it can be one of the following
         (https://scitools.org.uk/cartopy/docs/latest/crs/projections.html): 
         PlateCarree, AlbersEqualArea, AzimuthalEquidistant, EquidistantConic, 
@@ -71,7 +106,8 @@ def plot_dataset(data, interactive=True, variable=None, groupby=None,
         UTM, InterruptedGoodeHomolosine, RotatedPole, OSGB, EuroPP, Geostationary, 
         NearsidePerspective, EckertI, EckertII, EckertIII, EckertIV, EckertV, 
         EckertVI, EqualEarth, Gnomonic, LambertAzimuthalEqualArea, 
-        NorthPolarStereo, OSNI, SouthPolarStereo
+        NorthPolarStereo, OSNI, SouthPolarStereo. Can be called as 
+        ``ecv.crs.PlateCarree``.
     
     Notes
     -----
@@ -99,6 +135,9 @@ def plot_dataset(data, interactive=True, variable=None, groupby=None,
     [3]
     for hvplot: col='time'
     https://hvplot.holoviz.org/user_guide/Subplots.html
+
+    [4]
+    https://pyviz-dev.github.io/holoviz/tutorial/Composing_Plots.html
 
     """     
     if isinstance(data, str):
@@ -131,10 +170,23 @@ def plot_dataset(data, interactive=True, variable=None, groupby=None,
     tfin = data.data_vars.__getitem__(variable).time[-1].values
     tfin = np.datetime_as_string(tfin, unit='m')
     var_array = check_coords(data)
-    var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, 
-                              slice_lon)
     
     ### Slicing the array variable
+    if not interactive:
+        if slice_time is None and 'time' in var_array.coords and \
+            var_array.time.size > max_static_subplots:
+            if verbose:
+                print(f'Showing the first {max_static_subplots} time steps '
+                      'according to `max_static_subplots` argument \n')
+            slice_time = (0, max_static_subplots) 
+        if slice_level is None and 'level' in var_array.coords and \
+            var_array.level.size > max_static_subplots:
+            if verbose:
+                print(f'Showing the first {max_static_subplots} level steps '
+                      'according to `max_static_subplots` argument \n')
+            slice_level = (0, max_static_subplots) 
+    var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, 
+                              slice_lon)  
     var_array = var_array.data_vars.__getitem__(variable)
     
     if groupby is None:
@@ -158,14 +210,13 @@ def plot_dataset(data, interactive=True, variable=None, groupby=None,
         tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
         tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m')
         dimp = '4D' if var_array.ndim == 4 else '3D'
-        print(f'{style.BOLD}Name:{style.END} {variable}, {lname}')
-        print(f'{style.BOLD}Units:{style.END} {units}') 
-        print(f'{style.BOLD}Dimensionality:{style.END} {dimp}') 
-        print(f'{style.BOLD}Shape:{style.END} {shape}')
-        print(f'{style.BOLD}Shape (sliced array):{style.END} {shape_slice}')
-        print(f'{style.BOLD}Time interval:{style.END} {tini} --> {tfin}')
-        msg = 'Time interval (sliced array):'
-        print(f'{style.BOLD}{msg}{style.END}{tini_slice} --> {tfin_slice}\n')
+        print(f'{_bold("Name")} {variable}, {lname}')
+        print(f'{_bold("Units:")} {units}') 
+        print(f'{_bold("Dimensionality:")} {dimp}') 
+        print(f'{_bold("Shape:")} {shape}')
+        print(f'{_bold("Shape (sliced array):")} {shape_slice}')
+        print(f'{_bold("Time interval:")} {tini} --> {tfin}')
+        print(f'{_bold("Time interval (sliced array):")} {tini_slice} --> {tfin_slice}\n')
     if verbose in [2]:
         print(data.coords)
         print(data.data_vars, '\n')
@@ -188,13 +239,22 @@ def plot_dataset(data, interactive=True, variable=None, groupby=None,
         sizeargs = dict(height=height, width=width)
         project = False if projection is None else True
     
-        return var_array.hvplot(kind='image', x='lon', y='lat', groupby=groupby, 
-                                dynamic=dynamic, colorbar=colorbar, cmap=cmap, 
-                                shared_axes=True, legend=True, logz=logz, 
+        return var_array.hvplot(kind='image', 
+                                x='lon', 
+                                y='lat', 
+                                groupby=groupby, 
+                                dynamic=dynamic, 
+                                colorbar=colorbar, 
+                                cmap=cmap, 
+                                shared_axes=True, 
+                                legend=True, 
+                                logz=logz, 
                                 widget_location=widget_location, 
-                                project=project, projection=projection, 
+                                project=project, 
+                                projection=projection, 
                                 global_extent=global_extent, 
-                                coastline=coastline, **sizeargs)
+                                coastline=coastline, 
+                                **sizeargs)
         
     ### Static mosaic with matplotlib
     else:                
@@ -206,15 +266,33 @@ def plot_dataset(data, interactive=True, variable=None, groupby=None,
                 vmax = var_array.max().compute()   
                 vmax = np.array(vmax)
         
-        return plot_mosaic(var_array, show_colorbar=colorbar, dpi=dpi, 
-                           cmap=cmap, logscale=logz, show_axis=True, save=None, 
-                           vmin=vmin, vmax=vmax, transparent=False, 
-                           coastline=coastline, projection=projection)
+        return plot_mosaic(var_array, 
+                           show_colorbar=colorbar, 
+                           dpi=dpi, 
+                           cmap=cmap, 
+                           logscale=logz, 
+                           show_axis=True, 
+                           save=None, 
+                           vmin=vmin, 
+                           vmax=vmax, 
+                           transparent=False, 
+                           coastline=coastline, 
+                           projection=projection)
                 
 
-def plot_mosaic(ndarray, show_colorbar=True, dpi=100, cmap='viridis', 
-                logscale=False, show_axis=True, save=None, vmin=None, vmax=None, 
-                transparent=False, coastline=False, projection=None):
+def plot_mosaic(
+    ndarray, 
+    show_colorbar=True, 
+    dpi=100, 
+    cmap='viridis', 
+    logscale=False, 
+    show_axis=True, 
+    save=None, 
+    vmin=None, 
+    vmax=None, 
+    transparent=False, 
+    coastline=False, 
+    projection=None):
     """
     """    
     sizexy_ratio = ndarray.lon.shape[0] / ndarray.lat.shape[0]
