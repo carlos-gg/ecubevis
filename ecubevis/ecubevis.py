@@ -1,10 +1,12 @@
+import matplotlib
 import numpy as np
+from numpy.core.fromnumeric import var
 import xarray as xr
 import hvplot.xarray 
 import cartopy.crs as crs
 import holoviews as hv
 import matplotlib.colors as colors
-from matplotlib.pyplot import figure, show, savefig, close, subplots
+from matplotlib.pyplot import figure, show, savefig, close, subplots, Axes
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from .io import load_transform_mfdataset
@@ -23,7 +25,11 @@ def _bold(string):
    return '\033[1m' + string + '\033[0m'
 
 
-def plot_ndarray(data, interactive=True):
+def plot_ndarray(
+    data, 
+    interactive=True, 
+    max_static_subplot_rows=10,
+    max_static_subplot_cols=10):
     """
     Plot a 2D or 3D `numpy` array or a tuple of 2D `numpy` arrays. 
     
@@ -57,9 +63,11 @@ def plot_dataset(
     projection=None, 
     coastline=False, 
     global_extent=False, 
+    extent=None,
     dynamic=True, 
     dpi=80, 
-    max_static_subplots=10,
+    max_static_subplot_rows=10,
+    max_static_subplot_cols=10,
     plot_sizepx=1000, 
     widget_location='top', 
     verbose=True):
@@ -107,8 +115,12 @@ def plot_dataset(
         NearsidePerspective, EckertI, EckertII, EckertIII, EckertIV, EckertV, 
         EckertVI, EqualEarth, Gnomonic, LambertAzimuthalEqualArea, 
         NorthPolarStereo, OSNI, SouthPolarStereo. Can be called as 
-        ``ecv.crs.PlateCarree``.
-    
+        ``ecv.crs.PlateCarree()``.
+    extent : tuple of 4 floats
+        A tuple with four values in the format (lon_ini, lon_fin, lat_ini, 
+        lat_fin). Used to zoom the map to a given bounding box. Valid for static 
+        plots, when coastline is shown. 
+
     Notes
     -----
     https://github.com/pydata/xarray/issues/2199
@@ -174,17 +186,17 @@ def plot_dataset(
     ### Slicing the array variable
     if not interactive:
         if slice_time is None and 'time' in var_array.coords and \
-            var_array.time.size > max_static_subplots:
+            var_array.time.size > max_static_subplot_rows:
             if verbose:
-                print(f'Showing the first {max_static_subplots} time steps '
-                      'according to `max_static_subplots` argument \n')
-            slice_time = (0, max_static_subplots) 
+                print(f'Showing the first {max_static_subplot_rows} time steps '
+                      'according to `max_static_subplot_rows` argument \n')
+            slice_time = (0, max_static_subplot_rows) 
         if slice_level is None and 'level' in var_array.coords and \
-            var_array.level.size > max_static_subplots:
+            var_array.level.size > max_static_subplot_cols:
             if verbose:
-                print(f'Showing the first {max_static_subplots} level steps '
-                      'according to `max_static_subplots` argument \n')
-            slice_level = (0, max_static_subplots) 
+                print(f'Showing the first {max_static_subplot_cols} level steps '
+                      'according to `max_static_subplot_cols` argument \n')
+            slice_level = (0, max_static_subplot_cols) 
     var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, 
                               slice_lon)  
     var_array = var_array.data_vars.__getitem__(variable)
@@ -199,19 +211,17 @@ def plot_dataset(
         raise TypeError('Variable is neither 3D nor 4D')
  
     if verbose in [1, 2]:
-        try:
-            lname = var_array.long_name
-            units = var_array.units
-        except:
-            lname = variable
-            units = 'unknown' 
         shape_slice = var_array.shape
         # assuming the min temporal sampling unit is minutes
         tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
         tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m')
         dimp = '4D' if var_array.ndim == 4 else '3D'
-        print(f'{_bold("Name")} {variable}, {lname}')
-        print(f'{_bold("Units:")} {units}') 
+        if hasattr(var_array, 'long_name'):
+            print(f'{_bold("Name")} {variable}, {var_array.long_name}')
+        else:
+            print(f'{_bold("Name")} {variable}')
+        if hasattr(var_array, 'units'):
+            print(f'{_bold("Units:")} {var_array.units}') 
         print(f'{_bold("Dimensionality:")} {dimp}') 
         print(f'{_bold("Shape:")} {shape}')
         print(f'{_bold("Shape (sliced array):")} {shape_slice}')
@@ -266,22 +276,24 @@ def plot_dataset(
                 vmax = var_array.max().compute()   
                 vmax = np.array(vmax)
         
-        return plot_mosaic(var_array, 
-                           show_colorbar=colorbar, 
-                           dpi=dpi, 
-                           cmap=cmap, 
-                           logscale=logz, 
-                           show_axis=True, 
-                           save=None, 
-                           vmin=vmin, 
-                           vmax=vmax, 
-                           transparent=False, 
-                           coastline=coastline, 
-                           projection=projection)
+        return _plot_mosaic(var_array, 
+                            show_colorbar=colorbar, 
+                            dpi=dpi, 
+                            cmap=cmap, 
+                            logscale=logz, 
+                            show_axis=True, 
+                            save=None, 
+                            vmin=vmin, 
+                            vmax=vmax, 
+                            transparent=False, 
+                            coastline=coastline, 
+                            projection=projection,
+                            global_extent=global_extent,
+                            extent=extent)
                 
 
-def plot_mosaic(
-    ndarray, 
+def _plot_mosaic(
+    data, 
     show_colorbar=True, 
     dpi=100, 
     cmap='viridis', 
@@ -292,42 +304,88 @@ def plot_mosaic(
     vmax=None, 
     transparent=False, 
     coastline=False, 
-    projection=None):
+    projection=None,
+    global_extent=False,
+    extent=None):
     """
-    """    
-    sizexy_ratio = ndarray.lon.shape[0] / ndarray.lat.shape[0]
-    if 'level' in ndarray.coords:
-        cols = ndarray.level.shape[0]
+    """
+    params = dict()
+    if isinstance(data, (xr.Dataset, xr.DataArray)):
+        use_xarray = True
     else:
-        cols = 1
-    rows = ndarray.time.shape[0]
+        if not isinstance(data, np.ndarray):
+            raise TypeError('data format not supported')
+        use_xarray = False
+
+    if use_xarray:
+        sizexy_ratio = data.lon.shape[0] / data.lat.shape[0]
+        if 'level' in data.coords:
+            cols = data.level.shape[0]
+        else:
+            cols = 1
+        rows = data.time.shape[0]
+    else:
+        if data.ndim == 2:
+            sizexy_ratio = data.shape[1] / data.shape[0]
+            cols = 1
+            rows = 1
+        elif data.ndim == 3:
+            sizexy_ratio = data.shape[2] / data.shape[1] 
+            cols = 1
+            rows = data.shape[0]
+        elif data.ndim == 4:
+            sizexy_ratio = data.shape[3] / data.shape[2]
+            cols = data.shape[1]
+            rows = data.shape[0]     
+
+    if use_xarray:
+        lon_ini = data.lon[0]
+        lon_fin = data.lon[-1]
+        lat_ini = data.lat[0]
+        lat_fin = data.lat[-1]
+        extent_known = True
+    else:
+        if extent is not None:
+            lon_ini, lon_fin, lat_ini, lat_fin = extent
+            extent_known = True
+        else:
+            extent_known = False
+
     figcols = cols * 2  
     figrows = rows * 2 
-    colorbarzone = 1.4 if show_colorbar else 0
-    figsize = (max(8, figcols) * sizexy_ratio * colorbarzone, max(8, figrows))
+    colorbarzone = 1.4 if show_colorbar else 1
+    figsize = (max(8, figcols) * sizexy_ratio * colorbarzone, max(8, figrows))    
     fig, ax = subplots(rows, cols, sharex='col', sharey='row', dpi=dpi, 
-                       figsize=figsize, constrained_layout=False)
+                       figsize=figsize, constrained_layout=False, 
+                       subplot_kw={'projection': projection})
 
-    ndarray = np.squeeze(ndarray)
+    data = np.squeeze(data)
     for i in range(rows):
         for j in range(cols):
             if cols == 1:
-                axis = ax[i]
-                image = ndarray[i]
-                time = np.datetime64(image.time.values, 'm')
-                axis.set_title(f'$\ittime$={time}', fontsize=10)
+                if rows == 1:
+                    axis = ax
+                    image = data
+                else:
+                    axis = ax[i]
+                    image = data[i]
+                if use_xarray:
+                    time = np.datetime64(image.time.values, 'm')
+                    axis.set_title(f'$\ittime$={time}', fontsize=10)
             elif rows == 1:
                 axis = ax[j]
-                image = ndarray[j]
-                level = image.level.values
-                axis.set_title(f'$\itlevel$={level}', fontsize=10)
+                image = data[j]
+                if use_xarray:
+                    level = image.level.values
+                    axis.set_title(f'$\itlevel$={level}', fontsize=10)
             else:
                 axis = ax[i, j]
-                image = ndarray[i, j]
+                image = data[i, j]
                 time = np.datetime64(image.time.values, 'm')
-                level = image.level.values
-                axis.set_title(f'$\ittime$={time}, $\itlevel$={level}', 
-                               fontsize=10)
+                if use_xarray:
+                    level = image.level.values
+                    axis.set_title(f'$\ittime$={time}, $\itlevel$={level}', 
+                                   fontsize=10)
 
             if logscale:
                 image += np.abs(image.min())
@@ -339,23 +397,49 @@ def plot_mosaic(
             else:
                 norm = None
 
-            im = axis.imshow(image,cmap=cmap, origin='lower', norm=norm,
-                             interpolation='nearest', vmin=vmin, vmax=vmax)
+            if extent_known:
+                params['extent'] = extent
+
+            if coastline:
+                axis.coastlines()
+                axis.set_extent((lon_ini, lon_fin, lat_ini, lat_fin))
+            
+            if extent_known:
+                if projection is not None:
+                    axis.set_xticks(np.linspace(lon_ini, lon_fin, 10), 
+                                    crs=projection)
+                    axis.set_yticks(np.linspace(lat_ini, lat_fin, 10), 
+                                    crs=projection)
+                    params['transform'] = projection
+                else:
+                    axis.set_xticks(np.linspace(lon_ini, lon_fin, 10))
+                    axis.set_yticks(np.linspace(lat_ini, lat_fin, 10))
+                
+                if j == 0:
+                    axis.set_ylabel("$\it{lat}$", fontsize=10)
+                if i == rows - 1:
+                    axis.set_xlabel("$\it{lon}$", fontsize=10)
+                axis.tick_params(labelsize=8)
+
+            if global_extent:
+                axis.set_global()  
+
+            im = axis.imshow(image, cmap=cmap, origin='lower', norm=norm,
+                             interpolation='nearest', vmin=vmin, vmax=vmax, 
+                             **params)
 
             if show_colorbar:
                 divider = make_axes_locatable(axis)
                 # the width of cax is 2% of axis and the padding between cax
                 # and ax wis fixed at 0.05 inch
-                cax = divider.append_axes("right", size="2%", pad=0.05)
+                cax = divider.append_axes("right", size="2%", pad=0.1, 
+                                          axes_class=Axes)
                 cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False)
                 cb.outline.set_linewidth(0.1)
                 cb.ax.tick_params(labelsize=8)
-                cb.set_label(f'[{ndarray.units}]', rotation=270, labelpad=10)
-
-            if j == 0:
-                axis.set_ylabel("$\it{lat}$", fontsize=10)
-            if i == rows - 1:
-                axis.set_xlabel("$\it{lon}$", fontsize=10)
+                if use_xarray:
+                    cb.set_label(f'{data.name}[{data.units}]', rotation=90, 
+                                 labelpad=10)
 
             if not show_axis:
                 axis.set_axis_off()
