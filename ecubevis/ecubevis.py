@@ -1,3 +1,4 @@
+from typing import Type
 import matplotlib
 import numpy as np
 from numpy.core.fromnumeric import var
@@ -28,10 +29,17 @@ def _bold(string):
 def plot_ndarray(
     data, 
     interactive=True, 
+    colorbar=True, 
+    cmap='viridis', 
+    share_dynamic_range=True,
+    vmin=None, 
+    vmax=None, 
+    dpi=80,
+    coastline=False,
     max_static_subplot_rows=10,
     max_static_subplot_cols=10):
     """
-    Plot a 2D or 3D `numpy` array or a tuple of 2D `numpy` arrays. 
+    Plot a 3D or 4D `numpy` array or a tuple of 2D `numpy` arrays. 
     
     Parameters
     ----------
@@ -42,7 +50,39 @@ def plot_ndarray(
         the case of a 3D ndarray, a slider will be used to explore the data 
         across the 1 and 2 dimensions. 
     """
-    pass
+    if interactive:
+        pass
+    else:
+        if isinstance(data, tuple):
+            if isinstance(data[0], np.ndarray) and data[0].ndim == 2:
+                data = np.concatenate([np.expand_dims(im, 0) for im in data], 
+                                      axis=0)
+                mosaic_orientation = 'row'
+            else:
+                raise TypeError('wrong data tuple')
+        else:
+            mosaic_orientation = 'col'
+
+        if share_dynamic_range:
+            if vmin is None:
+                vmin = data.min()
+                vmin = np.array(vmin)
+            if vmax is None:
+                vmax = data.max() 
+                vmax = np.array(vmax)
+        
+        return _plot_mosaic_3or4d(data, 
+                                  show_colorbar=colorbar, 
+                                  dpi=dpi, 
+                                  cmap=cmap, 
+                                  show_axis=True, 
+                                  save=None, 
+                                  vmin=vmin, 
+                                  vmax=vmax, 
+                                  transparent=False, 
+                                  coastline=coastline, 
+                                  mosaic_orientation=mosaic_orientation,
+                                  )
 
 
 def plot_dataset(
@@ -262,24 +302,24 @@ def plot_dataset(
                 vmax = var_array.max().compute()   
                 vmax = np.array(vmax)
         
-        return _plot_mosaic(var_array, 
-                            show_colorbar=colorbar, 
-                            dpi=dpi, 
-                            cmap=cmap, 
-                            logscale=logz, 
-                            show_axis=True, 
-                            save=None, 
-                            vmin=vmin, 
-                            vmax=vmax, 
-                            transparent=False, 
-                            coastline=coastline, 
-                            wanted_projection=wanted_projection,
-                            data_projection=data_projection,
-                            global_extent=global_extent,
-                            extent=extent)
+        return _plot_mosaic_3or4d(var_array, 
+                                  show_colorbar=colorbar, 
+                                  dpi=dpi, 
+                                  cmap=cmap, 
+                                  logscale=logz, 
+                                  show_axis=True, 
+                                  save=None, 
+                                  vmin=vmin, 
+                                  vmax=vmax, 
+                                  transparent=False, 
+                                  coastline=coastline, 
+                                  wanted_projection=wanted_projection,
+                                  data_projection=data_projection,
+                                  global_extent=global_extent,
+                                  extent=extent)
                 
 
-def _plot_mosaic(
+def _plot_mosaic_3or4d(
     data, 
     show_colorbar=True, 
     dpi=100, 
@@ -294,7 +334,8 @@ def _plot_mosaic(
     wanted_projection=None,
     data_projection=None,
     global_extent=False,
-    extent=None):
+    extent=None,
+    mosaic_orientation='col'):
     """
     
     Ticks with non-rectangular projection supported in Carotpy 0.18
@@ -328,8 +369,12 @@ def _plot_mosaic(
             rows = 1
         elif data.ndim == 3:
             sizexy_ratio = data.shape[2] / data.shape[1] 
-            cols = 1
-            rows = data.shape[0]
+            if mosaic_orientation == 'col':
+                cols = 1
+                rows = data.shape[0]
+            elif mosaic_orientation == 'row':
+                rows = 1
+                cols = data.shape[0]
         elif data.ndim == 4:
             sizexy_ratio = data.shape[3] / data.shape[2]
             cols = data.shape[1]
@@ -351,7 +396,10 @@ def _plot_mosaic(
     figcols = cols * 2  
     figrows = rows * 2 
     colorbarzone = 1.4 if show_colorbar else 1
-    figsize = (max(8, figcols) * sizexy_ratio * colorbarzone, max(8, figrows))    
+    if mosaic_orientation == 'col':
+        figsize = (max(8, figcols) * sizexy_ratio * colorbarzone, max(8, figrows))    
+    elif mosaic_orientation == 'row':
+         figsize = (max(8, figrows), max(8, figcols) * sizexy_ratio * colorbarzone) 
     fig, ax = subplots(rows, cols, sharex='col', sharey='row', dpi=dpi, 
                        figsize=figsize, constrained_layout=False, 
                        subplot_kw={'projection': wanted_projection})
@@ -403,21 +451,21 @@ def _plot_mosaic(
                 params['extent'] = (lon_ini, lon_fin, lat_ini, lat_fin)
 
                 if wanted_projection is not None:
-                    if wanted_projection == crs.PlateCarree():
-                        axis.set_xticks(np.linspace(lon_ini, lon_fin, 10), 
-                                        crs=wanted_projection)
-                        axis.set_yticks(np.linspace(lat_ini, lat_fin, 10), 
-                                        crs=wanted_projection)
+                    # solo para crs.PlateCarree(). Se necesita cartopy 0.18
+                    axis.set_xticks(np.linspace(lon_ini, lon_fin, 10), 
+                                    crs=wanted_projection)
+                    axis.set_yticks(np.linspace(lat_ini, lat_fin, 10), 
+                                    crs=wanted_projection)
                     params['transform'] = data_projection
                 else:
                     axis.set_xticks(np.linspace(lon_ini, lon_fin, 10))
                     axis.set_yticks(np.linspace(lat_ini, lat_fin, 10))
-            
-            if j == 0:
-                axis.set_ylabel("$\it{lat}$", fontsize=10)
-            if i == rows - 1:
-                axis.set_xlabel("$\it{lon}$", fontsize=10)
-            axis.tick_params(labelsize=8)
+                     
+                if j == 0:
+                    axis.set_ylabel("$\it{lat}$", fontsize=10)
+                if i == rows - 1:
+                    axis.set_xlabel("$\it{lon}$", fontsize=10)
+                axis.tick_params(labelsize=8)
 
             if global_extent:
                 axis.set_global()  
@@ -431,7 +479,8 @@ def _plot_mosaic(
                 # the width of cax is 2% of axis and the padding is 0.1 inch
                 cax = divider.append_axes("right", size="2%", pad=0.1, 
                                           axes_class=Axes)
-                cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False)
+                cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
+                                  format='%.0e')
                 cb.outline.set_linewidth(0.1)
                 cb.ax.tick_params(labelsize=8)
                 if use_xarray:
