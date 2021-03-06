@@ -60,7 +60,8 @@ def plot_dataset(
     share_dynamic_range=True, 
     vmin=None, 
     vmax=None, 
-    projection=None, 
+    wanted_projection=None, 
+    data_projection=crs.PlateCarree(),
     coastline=False, 
     global_extent=False, 
     extent=None,
@@ -130,25 +131,10 @@ def plot_dataset(
     TODO
     ----
     [1]
-    https://unidata.github.io/MetPy/latest/examples/Four_Panel_Map.html
-    https://scitools.org.uk/cartopy/docs/v0.13/matplotlib/advanced_plotting.html
-    
-    ax = plt.axes(projection=projection)
-                if coastline:
-                    ax.coastlines(resolution='10m')
-
-                var_array_sliced[i].plot(cmap=cmap, vmin=vmin, vmax=vmax,
-                                      transform=projection)
-    
-    [2]
-    in subplots function:
-    subplot_kw={'projection': ccrs.PlateCarree()}
-
-    [3]
     for hvplot: col='time'
     https://hvplot.holoviz.org/user_guide/Subplots.html
 
-    [4]
+    [2]
     https://pyviz-dev.github.io/holoviz/tutorial/Composing_Plots.html
 
     """     
@@ -238,7 +224,7 @@ def plot_dataset(
     ### interactive plotting with slider(s) using bokeh
     if interactive:
         hv.extension('bokeh')
-        if coastline or projection is not None:
+        if coastline or wanted_projection is not None:
             width = plot_sizepx
             height = int(np.round(width / sizexy_ratio))
             height += int(height * 0.2)
@@ -247,7 +233,7 @@ def plot_dataset(
             height = int(np.round(width / sizexy_ratio))
 
         sizeargs = dict(height=height, width=width)
-        project = False if projection is None else True
+        project = False if wanted_projection is None else True
     
         return var_array.hvplot(kind='image', 
                                 x='lon', 
@@ -261,7 +247,7 @@ def plot_dataset(
                                 logz=logz, 
                                 widget_location=widget_location, 
                                 project=project, 
-                                projection=projection, 
+                                projection=wanted_projection, 
                                 global_extent=global_extent, 
                                 coastline=coastline, 
                                 **sizeargs)
@@ -287,7 +273,8 @@ def plot_dataset(
                             vmax=vmax, 
                             transparent=False, 
                             coastline=coastline, 
-                            projection=projection,
+                            wanted_projection=wanted_projection,
+                            data_projection=data_projection,
                             global_extent=global_extent,
                             extent=extent)
                 
@@ -304,10 +291,20 @@ def _plot_mosaic(
     vmax=None, 
     transparent=False, 
     coastline=False, 
-    projection=None,
+    wanted_projection=None,
+    data_projection=None,
     global_extent=False,
     extent=None):
     """
+    
+    Ticks with non-rectangular projection supported in Carotpy 0.18
+    https://scitools.org.uk/cartopy/docs/latest/gallery/gridliner.html
+    axis.gridlines(draw_labels=True)
+
+    On Cartopy 0.17
+    TypeError: Cannot label gridlines on a EqualEarth plot. 
+    Only PlateCarree and Mercator plots are currently supported.
+
     """
     params = dict()
     if isinstance(data, (xr.Dataset, xr.DataArray)):
@@ -339,10 +336,10 @@ def _plot_mosaic(
             rows = data.shape[0]     
 
     if use_xarray:
-        lon_ini = data.lon[0]
-        lon_fin = data.lon[-1]
-        lat_ini = data.lat[0]
-        lat_fin = data.lat[-1]
+        lon_ini = data.lon[0].values
+        lon_fin = data.lon[-1].values
+        lat_ini = data.lat[0].values
+        lat_fin = data.lat[-1].values
         extent_known = True
     else:
         if extent is not None:
@@ -357,7 +354,7 @@ def _plot_mosaic(
     figsize = (max(8, figcols) * sizexy_ratio * colorbarzone, max(8, figrows))    
     fig, ax = subplots(rows, cols, sharex='col', sharey='row', dpi=dpi, 
                        figsize=figsize, constrained_layout=False, 
-                       subplot_kw={'projection': projection})
+                       subplot_kw={'projection': wanted_projection})
 
     data = np.squeeze(data)
     for i in range(rows):
@@ -395,43 +392,43 @@ def _plot_mosaic(
                     linthresh = vmin
                     norm = colors.SymLogNorm(linthresh)   
             else:
-                norm = None
-
-            if extent_known:
-                params['extent'] = extent
+                norm = None                
 
             if coastline:
                 axis.coastlines()
-                axis.set_extent((lon_ini, lon_fin, lat_ini, lat_fin))
+                axis.set_extent((lon_ini, lon_fin, lat_ini, lat_fin), 
+                                crs=data_projection)
             
             if extent_known:
-                if projection is not None:
-                    axis.set_xticks(np.linspace(lon_ini, lon_fin, 10), 
-                                    crs=projection)
-                    axis.set_yticks(np.linspace(lat_ini, lat_fin, 10), 
-                                    crs=projection)
-                    params['transform'] = projection
+                params['extent'] = (lon_ini, lon_fin, lat_ini, lat_fin)
+
+                if wanted_projection is not None:
+                    if wanted_projection == crs.PlateCarree():
+                        axis.set_xticks(np.linspace(lon_ini, lon_fin, 10), 
+                                        crs=wanted_projection)
+                        axis.set_yticks(np.linspace(lat_ini, lat_fin, 10), 
+                                        crs=wanted_projection)
+                    params['transform'] = data_projection
                 else:
                     axis.set_xticks(np.linspace(lon_ini, lon_fin, 10))
                     axis.set_yticks(np.linspace(lat_ini, lat_fin, 10))
-                
-                if j == 0:
-                    axis.set_ylabel("$\it{lat}$", fontsize=10)
-                if i == rows - 1:
-                    axis.set_xlabel("$\it{lon}$", fontsize=10)
-                axis.tick_params(labelsize=8)
+            
+            if j == 0:
+                axis.set_ylabel("$\it{lat}$", fontsize=10)
+            if i == rows - 1:
+                axis.set_xlabel("$\it{lon}$", fontsize=10)
+            axis.tick_params(labelsize=8)
 
             if global_extent:
                 axis.set_global()  
 
-            im = axis.imshow(image, cmap=cmap, origin='lower', norm=norm,
-                             interpolation='nearest', vmin=vmin, vmax=vmax, 
+            im = axis.imshow(image, origin='lower', interpolation='nearest', 
+                             cmap=cmap, norm=norm, vmin=vmin, vmax=vmax, 
                              **params)
 
             if show_colorbar:
                 divider = make_axes_locatable(axis)
-                # the width of cax is 2% of axis and the padding between cax
-                # and ax wis fixed at 0.05 inch
+                # the width of cax is 2% of axis and the padding is 0.1 inch
                 cax = divider.append_axes("right", size="2%", pad=0.1, 
                                           axes_class=Axes)
                 cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False)
