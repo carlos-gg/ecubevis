@@ -7,9 +7,11 @@ import hvplot.xarray
 import cartopy.crs as crs
 import holoviews as hv
 import matplotlib.colors as colors
-from matplotlib.pyplot import figure, show, savefig, close, subplots, Axes
+from matplotlib.pyplot import colorbar, figure, show, savefig, close, subplots, Axes
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from cartopy.mpl.geoaxes import GeoAxes
 from .io import load_transform_mfdataset
 from .utils import check_coords, slice_dataset
 
@@ -36,6 +38,8 @@ def plot_ndarray(
     vmax=None, 
     dpi=80,
     coastline=False,
+    subplots_horpadding=0.05,
+    subplots_verpadding=0.05,
     max_static_subplot_rows=10,
     max_static_subplot_cols=10):
     """
@@ -63,6 +67,12 @@ def plot_ndarray(
         else:
             mosaic_orientation = 'col'
 
+            # max static subplots, assuming [time, level, lat, lon]
+            if data.ndim == 3 and data.shape[0] > max_static_subplot_rows:
+                data = data[:max_static_subplot_rows]
+            if data.ndim == 4 and data.shape[1] > max_static_subplot_cols:
+                data = data[:, :max_static_subplot_cols]
+
         if share_dynamic_range:
             if vmin is None:
                 vmin = data.min()
@@ -82,6 +92,8 @@ def plot_ndarray(
                                   transparent=False, 
                                   coastline=coastline, 
                                   mosaic_orientation=mosaic_orientation,
+                                  subplots_horpadding=subplots_horpadding,
+                                  subplots_verpadding=subplots_verpadding,
                                   )
 
 
@@ -111,6 +123,8 @@ def plot_dataset(
     max_static_subplot_cols=10,
     plot_sizepx=1000, 
     widget_location='top', 
+    subplots_horpadding=0.05,
+    subplots_verpadding=0.05,
     verbose=True):
     """
     Plot an n-dimensional dataset (in-memory or from a path). The dataset is 
@@ -316,7 +330,9 @@ def plot_dataset(
                                   wanted_projection=wanted_projection,
                                   data_projection=data_projection,
                                   global_extent=global_extent,
-                                  extent=extent)
+                                  extent=extent,
+                                  subplots_horpadding=subplots_horpadding,
+                                  subplots_verpadding=subplots_verpadding)
                 
 
 def _plot_mosaic_3or4d(
@@ -335,7 +351,9 @@ def _plot_mosaic_3or4d(
     data_projection=None,
     global_extent=False,
     extent=None,
-    mosaic_orientation='col'):
+    mosaic_orientation='col',
+    subplots_horpadding=0.05,
+    subplots_verpadding=0.05):
     """
     
     Ticks with non-rectangular projection supported in Carotpy 0.18
@@ -359,8 +377,10 @@ def _plot_mosaic_3or4d(
         sizexy_ratio = data.lon.shape[0] / data.lat.shape[0]
         if 'level' in data.coords:
             cols = data.level.shape[0]
+            data_is_3d = False
         else:
             cols = 1
+            data_is_3d = True
         rows = data.time.shape[0]
     else:
         if data.ndim == 2:
@@ -368,7 +388,8 @@ def _plot_mosaic_3or4d(
             cols = 1
             rows = 1
         elif data.ndim == 3:
-            sizexy_ratio = data.shape[2] / data.shape[1] 
+            sizexy_ratio = data.shape[2] / data.shape[1]
+            data_is_3d = True 
             if mosaic_orientation == 'col':
                 cols = 1
                 rows = data.shape[0]
@@ -379,6 +400,7 @@ def _plot_mosaic_3or4d(
             sizexy_ratio = data.shape[3] / data.shape[2]
             cols = data.shape[1]
             rows = data.shape[0]     
+            data_is_3d = False
 
     if use_xarray:
         lon_ini = data.lon[0].values
@@ -393,13 +415,16 @@ def _plot_mosaic_3or4d(
         else:
             extent_known = False
 
-    figcols = cols * 2  
-    figrows = rows * 2 
-    colorbarzone = 1.4 if show_colorbar else 1
-    if mosaic_orientation == 'col':
-        figsize = (max(8, figcols) * sizexy_ratio * colorbarzone, max(8, figrows))    
-    elif mosaic_orientation == 'row':
-         figsize = (max(8, figrows), max(8, figcols) * sizexy_ratio * colorbarzone) 
+    colorbarzone = 1.4 if show_colorbar else 1 
+    if mosaic_orientation == 'row' and data_is_3d:
+        figsize = (max(8, rows*2) * sizexy_ratio * colorbarzone, max(8, cols*2)) 
+    else:
+        figsize = (max(8, cols*2) * sizexy_ratio * colorbarzone, max(8, rows*2)) 
+    
+    if wanted_projection is None and extent_known:
+        wanted_projection = data_projection
+        print(f'Assuming {wanted_projection} projection')
+
     fig, ax = subplots(rows, cols, sharex='col', sharey='row', dpi=dpi, 
                        figsize=figsize, constrained_layout=False, 
                        subplot_kw={'projection': wanted_projection})
@@ -442,29 +467,33 @@ def _plot_mosaic_3or4d(
             else:
                 norm = None                
 
-            if coastline:
+            if coastline and isinstance(axis, GeoAxes):
                 axis.coastlines()
                 axis.set_extent((lon_ini, lon_fin, lat_ini, lat_fin), 
                                 crs=data_projection)
             
             if extent_known:
                 params['extent'] = (lon_ini, lon_fin, lat_ini, lat_fin)
+                params['transform'] = data_projection
+                if wanted_projection is not None and \
+                   wanted_projection == crs.PlateCarree():
+                    # Cartopy 0.18 needed for other projections
+                    axis.set_xticks(np.linspace(lon_ini, lon_fin, 7), 
+                                    crs=wanted_projection)
+                    axis.set_yticks(np.linspace(lat_ini, lat_fin, 7), 
+                                    crs=wanted_projection)
+                    lonform = LongitudeFormatter(number_format='.1f', 
+                                                 degree_symbol='º')
+                    latform = LatitudeFormatter(number_format='.1f', 
+                                                degree_symbol='º')
+                    axis.xaxis.set_major_formatter(lonform)
+                    axis.yaxis.set_major_formatter(latform)
 
-                if wanted_projection is not None:
-                    # solo para crs.PlateCarree(). Se necesita cartopy 0.18
-                    axis.set_xticks(np.linspace(lon_ini, lon_fin, 10), 
-                                    crs=wanted_projection)
-                    axis.set_yticks(np.linspace(lat_ini, lat_fin, 10), 
-                                    crs=wanted_projection)
-                    params['transform'] = data_projection
-                else:
-                    axis.set_xticks(np.linspace(lon_ini, lon_fin, 10))
-                    axis.set_yticks(np.linspace(lat_ini, lat_fin, 10))
+                    if j == 0:
+                        axis.set_ylabel("$\it{lat}$", fontsize=10)
+                    if i == rows - 1:
+                        axis.set_xlabel("$\it{lon}$", fontsize=10)
                      
-                if j == 0:
-                    axis.set_ylabel("$\it{lat}$", fontsize=10)
-                if i == rows - 1:
-                    axis.set_xlabel("$\it{lon}$", fontsize=10)
                 axis.tick_params(labelsize=8)
 
             if global_extent:
@@ -480,15 +509,19 @@ def _plot_mosaic_3or4d(
                 cax = divider.append_axes("right", size="2%", pad=0.1, 
                                           axes_class=Axes)
                 cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
-                                  format='%.0e')
+                                  format=None) #format='%1.2e'
                 cb.outline.set_linewidth(0.1)
                 cb.ax.tick_params(labelsize=8)
                 if use_xarray:
-                    cb.set_label(f'{data.name}[{data.units}]', rotation=90, 
+                    cb.set_label(f'{data.name} [{data.units}]', rotation=90, 
                                  labelpad=10)
 
             if not show_axis:
                 axis.set_axis_off()
+
+    if show_colorbar:
+        subplots_horpadding += 0.05
+    fig.subplots_adjust(wspace=subplots_horpadding, hspace=subplots_verpadding)
 
     if save is not None and isinstance(save, str):
         savefig(save, dpi=dpi, bbox_inches='tight', pad_inches=0,
