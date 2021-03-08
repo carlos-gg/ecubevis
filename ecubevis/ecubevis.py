@@ -1,13 +1,12 @@
-from typing import Type
 import matplotlib
 import numpy as np
-from numpy.core.fromnumeric import var
+import holoviews as hv
 import xarray as xr
 import hvplot.xarray 
 import cartopy.crs as crs
 import holoviews as hv
 import matplotlib.colors as colors
-from matplotlib.pyplot import colorbar, figure, show, savefig, close, subplots, Axes
+from matplotlib.pyplot import colorbar, show, savefig, close, subplots, Axes
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
@@ -32,16 +31,21 @@ def plot_ndarray(
     data, 
     interactive=True, 
     colorbar=True, 
+    axis=True, 
     cmap='viridis', 
     share_dynamic_range=True,
     vmin=None, 
     vmax=None, 
     dpi=80,
+    plot_size=360,
     coastline=False,
     subplots_horpadding=0.05,
     subplots_verpadding=0.05,
     max_static_subplot_rows=10,
-    max_static_subplot_cols=10):
+    max_static_subplot_cols=10,
+    overlay_labels=None,
+    data2=None,
+    ):
     """
     Plot a 3D or 4D `numpy` array or a tuple of 2D `numpy` arrays. 
     
@@ -55,7 +59,60 @@ def plot_ndarray(
         across the 1 and 2 dimensions. 
     """
     if interactive:
-        pass
+        hv.extension('bokeh') # matplotlib 
+        if data.ndim == 3:
+            # Dataset((X, Y, Z), Data), where
+            # X is a 1D array of shape M ,
+            # Y is a 1D array of shape N and
+            # Z is a 1D array of shape O
+            # Data is a ND array of shape NxMxO
+            ds = hv.Dataset((range(data.shape[2]), range(data.shape[1]),
+                             range(data.shape[0]), data), 
+                             ['x', 'y', 'time'], 'values')
+            max_frames = data.shape[0]
+            sizexy_ratio = data.shape[2] / data.shape[1]
+        elif data.ndim == 4:
+            # adding a level dimension
+            ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
+                             range(data.shape[1]), range(data.shape[0]), data),
+                            ['x', 'y', 'level', 'time'], 'values')
+            max_frames = data.shape[0] * data.shape[1]
+            sizexy_ratio = data.shape[3] / data.shape[2]
+
+        if vmin == 'min':
+            vmin = data.min()
+        if vmax == 'max':
+            vmax = data.max()
+
+        image_stack = ds.to(hv.Image, kdims=['x', 'y'], dynamic=True)
+        hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames,
+                  widget_location='top')
+        hv_cm = cmap if isinstance(cmap, str) else cmap.name        
+        width = int(plot_size * sizexy_ratio)
+        height = int(plot_size)
+        # Compensating the width to accommodate the colorbar
+        if colorbar:
+            cb_wid = 15
+            cb_pad = 3
+            tick_len = len(str(int(data.max())))
+            if tick_len < 4:
+                cb_tick = 25
+            elif tick_len == 4:
+                cb_tick = 35
+            elif tick_len > 4:
+                cb_tick = 45
+            width_ = width + cb_pad + cb_wid + cb_tick
+        else:
+            width_ = width
+
+        return image_stack.opts(hv.opts.Image(cmap=hv_cm,
+                                              colorbar=colorbar,
+                                              colorbar_opts={'width': 15,
+                                                             'padding': 3},
+                                              width=width_, height=height,
+                                              clim=(vmin, vmax),
+                                              tools=['hover'])) 
+
     else:
         if isinstance(data, tuple):
             if isinstance(data[0], np.ndarray) and data[0].ndim == 2:
@@ -85,7 +142,7 @@ def plot_ndarray(
                                   show_colorbar=colorbar, 
                                   dpi=dpi, 
                                   cmap=cmap, 
-                                  show_axis=True, 
+                                  show_axis=axis, 
                                   save=None, 
                                   vmin=vmin, 
                                   vmax=vmax, 
@@ -94,6 +151,7 @@ def plot_ndarray(
                                   mosaic_orientation=mosaic_orientation,
                                   subplots_horpadding=subplots_horpadding,
                                   subplots_verpadding=subplots_verpadding,
+                                  overlay_labels=overlay_labels
                                   )
 
 
@@ -121,7 +179,7 @@ def plot_dataset(
     dpi=80, 
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
-    plot_sizepx=1000, 
+    plot_size_px=1000, 
     widget_location='top', 
     subplots_horpadding=0.05,
     subplots_verpadding=0.05,
@@ -279,11 +337,10 @@ def plot_dataset(
     if interactive:
         hv.extension('bokeh')
         if coastline or wanted_projection is not None:
-            width = plot_sizepx
+            width = plot_size_px
             height = int(np.round(width / sizexy_ratio))
-            height += int(height * 0.2)
         else:
-            width = plot_sizepx
+            width = plot_size_px
             height = int(np.round(width / sizexy_ratio))
 
         sizeargs = dict(height=height, width=width)
@@ -353,7 +410,8 @@ def _plot_mosaic_3or4d(
     extent=None,
     mosaic_orientation='col',
     subplots_horpadding=0.05,
-    subplots_verpadding=0.05):
+    subplots_verpadding=0.05,
+    overlay_labels=None):
     """
     
     Ticks with non-rectangular projection supported in Carotpy 0.18
@@ -373,6 +431,7 @@ def _plot_mosaic_3or4d(
             raise TypeError('data format not supported')
         use_xarray = False
 
+    # use_xarray=True -> plot_dataset
     if use_xarray:
         sizexy_ratio = data.lon.shape[0] / data.lat.shape[0]
         if 'level' in data.coords:
@@ -382,6 +441,7 @@ def _plot_mosaic_3or4d(
             cols = 1
             data_is_3d = True
         rows = data.time.shape[0]
+    # use_xarray=False -> plot_ndarray
     else:
         if data.ndim == 2:
             sizexy_ratio = data.shape[1] / data.shape[0]
@@ -448,6 +508,9 @@ def _plot_mosaic_3or4d(
                 if use_xarray:
                     level = image.level.values
                     axis.set_title(f'$\itlevel$={level}', fontsize=10)
+                else:
+                    if mosaic_orientation == 'row':
+                        axis.set_title(overlay_labels[j], fontsize=10)
             else:
                 axis = ax[i, j]
                 image = data[i, j]
