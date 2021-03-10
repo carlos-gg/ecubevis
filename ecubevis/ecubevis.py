@@ -37,29 +37,54 @@ def plot_ndarray(
     vmin=None, 
     vmax=None, 
     dpi=80,
-    plot_size=360,
+    plot_size_px=360,
     coastline=False,
     subplots_horpadding=0.05,
     subplots_verpadding=0.05,
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
-    overlay_labels=None,
-    data2=None,
+    subplot_titles=None,
     ):
     """
-    Plot a 3D or 4D `numpy` array or a tuple of 2D `numpy` arrays. 
+    Plot a 3D or 4D ``numpy`` array or a tuple of 2D ``numpy`` arrays. 
     
     Parameters
     ----------
+    data : numpy ndarray or tuple 
+        3D or 4D ``numpy`` ndarray or a tuple of 2D ``numpy`` ndarrays. 
     interactive : bool, optional
-        Whether to plot using an interactive (with ``bokeh``) or static (with
+        Whether to display an interactive (with ``bokeh``) or static (with
         ``matplotlib``) plot. In the case of a 3D ndarray, a slider will be used 
-        to explore the data across the 1 dimension (time or vertical level). In 
-        the case of a 3D ndarray, a slider will be used to explore the data 
-        across the 1 and 2 dimensions. 
+        to explore the data across time and/or vertical levels.
+    colorbar : bool optional
+        Whether to show the colorbar.
+    axis : bool optional
+        Whether to show the axis.
+    cmap : str or matplotlib.cm, optional
+        Colormap, eg. viridis" or ecv.cm.viridis. 
+    share_dynamic_range : bool optional
+        Whether to share the dynamic range among mosaic subplots.
+    vmin : float or None
+        Min value to be displayed.
+    vmax : float or None
+        Max value to be displayed.
+    dpi : int optional
+        [interactive=False] DPI of the mosaic figure.
+    plot_size_px : int optional
+        [interactive=True] Value in pixels used to scale up or down the size of 
+        the ``holoviews`` figure.
+    subplot_titles : tuple of str
+        [interactive=False] When the input data is a tuple of 2D ndarrays, the
+        subplot_titles corresponds to a tuple of the same lenght with the titles
+        of each subplot. 
+
+    Returns
+    -------
+    Holoviews object when interactive=True, or None when interactive=False. In
+    both cases the plot is shown on Jupyterlab.
     """
     if interactive:
-        hv.extension('bokeh') # matplotlib 
+        hv.extension('bokeh') # matplotlib is another option
         if data.ndim == 3:
             # Dataset((X, Y, Z), Data), where
             # X is a 1D array of shape M ,
@@ -83,13 +108,18 @@ def plot_ndarray(
             vmin = data.min()
         if vmax == 'max':
             vmax = data.max()
+        
+        params = dict()
+        # not needed in recent version of holoviews (can take clim=None)
+        if vmin is not None and vmax is not None:
+            params['clim'] = (vmin, vmax)
 
         image_stack = ds.to(hv.Image, kdims=['x', 'y'], dynamic=True)
         hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames,
                   widget_location='top')
         hv_cm = cmap if isinstance(cmap, str) else cmap.name        
-        width = int(plot_size * sizexy_ratio)
-        height = int(plot_size)
+        width = int(plot_size_px * sizexy_ratio)
+        height = int(plot_size_px)
         # Compensating the width to accommodate the colorbar
         if colorbar:
             cb_wid = 15
@@ -101,17 +131,15 @@ def plot_ndarray(
                 cb_tick = 35
             elif tick_len > 4:
                 cb_tick = 45
-            width_ = width + cb_pad + cb_wid + cb_tick
-        else:
-            width_ = width
+            width += cb_pad + cb_wid + cb_tick
 
         return image_stack.opts(hv.opts.Image(cmap=hv_cm,
                                               colorbar=colorbar,
                                               colorbar_opts={'width': 15,
                                                              'padding': 3},
-                                              width=width_, height=height,
-                                              clim=(vmin, vmax),
-                                              tools=['hover'])) 
+                                              width=width, height=height,
+                                              tools=['hover'],
+                                              **params)) 
 
     else:
         if isinstance(data, tuple):
@@ -151,7 +179,7 @@ def plot_ndarray(
                                   mosaic_orientation=mosaic_orientation,
                                   subplots_horpadding=subplots_horpadding,
                                   subplots_verpadding=subplots_verpadding,
-                                  overlay_labels=overlay_labels
+                                  subplot_titles=subplot_titles
                                   )
 
 
@@ -180,7 +208,6 @@ def plot_dataset(
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
     plot_size_px=1000, 
-    widget_location='top', 
     subplots_horpadding=0.05,
     subplots_verpadding=0.05,
     verbose=True):
@@ -192,11 +219,11 @@ def plot_dataset(
     Parameters
     ----------
     data : xarray Dataset/Dataarray or str
-        ERA5 variable(s) as Xarray (in memory) variable or as a string with 
-        the path to the corresponding NetCDF file. Expected dimensions: 
-        4D array [time, level, lat, lon] or 3D array [time, lat, lon].
+        Xarray (in memory) object or string with the path to the corresponding 
+        NetCDF/IRIS/GRIB file. Expected dimensions: 3D array [time, lat, lon] or
+        4D array [time, level, lat, lon].
     interactive : bool optional
-        Whether to plot using an interactive plot (using ``hvplot``) with a 
+        Whether to display an interactive plot (using ``hvplot``) with a 
         slider across the dimension set by ``groupby`` or an static mosaic 
         (using ``matplotlib``). 
     variable : str or int or None, optional
@@ -215,10 +242,16 @@ def plot_dataset(
         Tuple with initial and final values for slicing the lon dimension. If 
         None, the array is not sliced accross this dimension.
     colorbar : bool optional
-        To show a colorbar.
+        Whether to show a colorbar.
     cmap : str or matplotlib.cm, optional
         Colormap, eg. viridis" or ecv.cm.viridis.  
-    projection : cartopy.crs projection, optional
+    share_dynamic_range : bool optional
+        Whether to share the dynamic range among mosaic subplots.
+    vmin : float or None
+        Min value to be displayed.
+    vmax : float or None
+        Max value to be displayed.
+    wanted_projection : cartopy.crs projection, optional
         According to Cartopy's documentation it can be one of the following
         (https://scitools.org.uk/cartopy/docs/latest/crs/projections.html): 
         PlateCarree, AlbersEqualArea, AzimuthalEquidistant, EquidistantConic, 
@@ -233,6 +266,11 @@ def plot_dataset(
         A tuple with four values in the format (lon_ini, lon_fin, lat_ini, 
         lat_fin). Used to zoom the map to a given bounding box. Valid for static 
         plots, when coastline is shown. 
+    dpi : int
+        [interactive=False] DPI of the mosaic figure.
+    plot_size_px : int optional
+        [interactive=True] Value in pixels used to scale up or down the size of 
+        the ``hvplot`` figure.
 
     Notes
     -----
@@ -356,7 +394,7 @@ def plot_dataset(
                                 shared_axes=True, 
                                 legend=True, 
                                 logz=logz, 
-                                widget_location=widget_location, 
+                                widget_location='top', 
                                 project=project, 
                                 projection=wanted_projection, 
                                 global_extent=global_extent, 
@@ -411,6 +449,7 @@ def _plot_mosaic_3or4d(
     mosaic_orientation='col',
     subplots_horpadding=0.05,
     subplots_verpadding=0.05,
+    subplot_titles=None,
     overlay_labels=None):
     """
     
@@ -509,8 +548,8 @@ def _plot_mosaic_3or4d(
                     level = image.level.values
                     axis.set_title(f'$\itlevel$={level}', fontsize=10)
                 else:
-                    if mosaic_orientation == 'row':
-                        axis.set_title(overlay_labels[j], fontsize=10)
+                    if mosaic_orientation == 'row' and subplot_titles is not None:
+                        axis.set_title(subplot_titles[j], fontsize=10)
             else:
                 axis = ax[i, j]
                 image = data[i, j]
