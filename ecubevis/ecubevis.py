@@ -39,21 +39,22 @@ def plot_ndarray(
     vmin=None, 
     vmax=None, 
     dpi=80,
-    plot_size_px=360,
+    plot_size_px=600,
     coastline=False,
     subplots_horpadding=0.1,
     subplots_verpadding=0.1,
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
     subplot_titles=None,
+    verbose=False, 
     ):
     """
-    Plot a 3D or 4D ``numpy`` array or a tuple of 2D ``numpy`` arrays. 
+    Plot a 2D, 3D or 4D ``numpy`` array or a tuple of 2D ``numpy`` arrays. 
     
     Parameters
     ----------
     data : numpy ndarray or tuple 
-        3D or 4D ``numpy`` ndarray or a tuple of 2D ``numpy`` ndarrays. 
+        2D, 3D or 4D ``numpy`` ndarray or a tuple of 2D ``numpy`` ndarrays. 
     interactive : bool, optional
         Whether to display an interactive (with ``bokeh``) or static (with
         ``matplotlib``) plot. In the case of a 3D ndarray, a slider will be used 
@@ -73,8 +74,8 @@ def plot_ndarray(
     dpi : int optional
         [interactive=False] DPI of the mosaic figure.
     plot_size_px : int optional
-        [interactive=True] Value in pixels used to scale up or down the size of 
-        the ``holoviews`` figure.
+        [interactive=True] Value of the figure width in pixels, used to scale up 
+        or down the size of the ``holoviews`` figure.
     subplot_titles : tuple of str
         [interactive=False] When the input data is a tuple of 2D ndarrays, the
         subplot_titles corresponds to a tuple of the same lenght with the titles
@@ -119,15 +120,15 @@ def plot_ndarray(
             params['clim'] = (vmin, vmax)
 
         image_stack = ds.to(hv.Image, kdims=['x', 'y'], dynamic=True)
-        hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames,
-                  widget_location='top')
+        hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames, widget_location='top')
         hv_cm = cmap if isinstance(cmap, str) else cmap.name        
-        width = int(plot_size_px * sizexy_ratio)
-        height = int(plot_size_px)
+        width = plot_size_px
+        height = int(np.round(width / sizexy_ratio))
+
         # Compensating the width to accommodate the colorbar
         if colorbar:
             cb_wid = 15
-            cb_pad = 3
+            cb_pad = 5
             tick_len = len(str(int(data.max())))
             if tick_len < 4:
                 cb_tick = 25
@@ -140,30 +141,19 @@ def plot_ndarray(
         return image_stack.opts(hv.opts.Image(cmap=hv_cm,
                                               colorbar=colorbar,
                                               colorbar_opts={'width': 15,
-                                                             'padding': 3},
-                                              width=width, height=height,
+                                                             'padding': 5},
+                                              width=width, 
+                                              height=height,
                                               tools=['hover'],
                                               **params)) 
 
-    # non-interactive or static matplotlib plotting
+    # Non-interactive or static matplotlib plotting
     else:
-        if isinstance(data, np.ndarray):
-            mosaic_orientation = 'col'
-            # max static subplots, assuming [time, level, lat, lon]
-            if data.ndim == 3 and data.shape[0] > max_static_subplot_rows:
-                data = data[:max_static_subplot_rows]
-            if data.ndim == 4 and data.shape[1] > max_static_subplot_cols:
-                data = data[:, :max_static_subplot_cols]
-
-            if share_dynamic_range:
-                    if vmin is None:
-                        vmin = data.min()
-                        vmin = np.array(vmin)
-                    if vmax is None:
-                        vmax = data.max() 
-                        vmax = np.array(vmax)
-                
-            return _plot_mosaic_2d3or4d(data, 
+        # Plotting a single 2D ndarray
+        if isinstance(data, np.ndarray) and data.ndim == 2:
+            if verbose:
+                print('Plotting a single 2D np.ndarray')
+            return _plot_mosaic_2d(data,
                                         show_colorbar=colorbar, 
                                         dpi=dpi, 
                                         cmap=cmap, 
@@ -173,12 +163,12 @@ def plot_ndarray(
                                         vmax=vmax, 
                                         transparent=False, 
                                         coastline=coastline, 
-                                        mosaic_orientation=mosaic_orientation,
                                         subplots_horpadding=subplots_horpadding,
-                                        subplots_verpadding=subplots_verpadding,
                                         subplot_titles=subplot_titles)
-
+        # Plotting a tuple of 2D arrays
         elif isinstance(data, tuple):
+            if verbose:
+                print('Plotting a tuple of 2D np.ndarrays')
             list_x = []
             list_y = []
             for i in range(len(data)):
@@ -190,18 +180,18 @@ def plot_ndarray(
             
             # different image sizes in tuple
             if not all(x == list_x[0] for x in list_x) or not all(y == list_y[0] for y in list_y):
-                return _plot_mosaic_tuple2d(data,
-                                            show_colorbar=colorbar, 
-                                            dpi=dpi, 
-                                            cmap=cmap, 
-                                            show_axis=axis, 
-                                            save=None, 
-                                            vmin=vmin, 
-                                            vmax=vmax, 
-                                            transparent=False, 
-                                            coastline=coastline, 
-                                            subplots_horpadding=subplots_horpadding,
-                                            subplot_titles=subplot_titles)
+                return _plot_mosaic_2d(data,
+                                        show_colorbar=colorbar, 
+                                        dpi=dpi, 
+                                        cmap=cmap, 
+                                        show_axis=axis, 
+                                        save=None, 
+                                        vmin=vmin, 
+                                        vmax=vmax, 
+                                        transparent=False, 
+                                        coastline=coastline, 
+                                        subplots_horpadding=subplots_horpadding,
+                                        subplot_titles=subplot_titles)
             # equal image sizes in tuple
             else:
                 data = np.concatenate([np.expand_dims(im, 0) for im in data], 
@@ -215,20 +205,62 @@ def plot_ndarray(
                         vmax = data.max() 
                         vmax = np.array(vmax)
                 
-                return _plot_mosaic_2d3or4d(data, 
-                                            show_colorbar=colorbar, 
-                                            dpi=dpi, 
-                                            cmap=cmap, 
-                                            show_axis=axis, 
-                                            save=None, 
-                                            vmin=vmin, 
-                                            vmax=vmax, 
-                                            transparent=False, 
-                                            coastline=coastline, 
-                                            mosaic_orientation=mosaic_orientation,
-                                            subplots_horpadding=subplots_horpadding,
-                                            subplots_verpadding=subplots_verpadding,
-                                            subplot_titles=subplot_titles)
+                return _plot_mosaic_3or4d(data, 
+                                          show_colorbar=colorbar, 
+                                          dpi=dpi, 
+                                          cmap=cmap, 
+                                          show_axis=axis, 
+                                          save=None, 
+                                          vmin=vmin, 
+                                          vmax=vmax, 
+                                          transparent=False, 
+                                          coastline=coastline, 
+                                          mosaic_orientation=mosaic_orientation,
+                                          subplots_horpadding=subplots_horpadding,
+                                          subplots_verpadding=subplots_verpadding,
+                                          subplot_titles=subplot_titles)
+        
+        # Plotting a 3D or 4D array
+        elif isinstance(data, np.ndarray):
+            # max static subplots, assuming [time, level, lat, lon]  
+            if data.ndim == 3:
+                if verbose:
+                    print('Plotting a single 3D np.ndarray')
+                if data.shape[0] > max_static_subplot_rows:
+                    data = data[:max_static_subplot_rows]
+                    mosaic_orientation = 'col'
+            if data.ndim == 4:
+                if verbose:
+                    print('Plotting a single 4D np.ndarray')
+                if data.shape[0] > max_static_subplot_rows:
+                    data = data[:max_static_subplot_rows]
+                if data.shape[1] > max_static_subplot_cols:
+                    data = data[:, :max_static_subplot_cols]
+                    mosaic_orientation = 'col'
+
+            if share_dynamic_range:
+                if vmin is None:
+                    vmin = data.min()
+                    vmin = np.array(vmin)
+                if vmax is None:
+                    vmax = data.max() 
+                    vmax = np.array(vmax)
+            
+            return _plot_mosaic_3or4d(data, 
+                                      show_colorbar=colorbar, 
+                                      dpi=dpi, 
+                                      cmap=cmap, 
+                                      show_axis=axis, 
+                                      save=None, 
+                                      vmin=vmin, 
+                                      vmax=vmax, 
+                                      transparent=False, 
+                                      coastline=coastline, 
+                                      mosaic_orientation=mosaic_orientation,
+                                      subplots_horpadding=subplots_horpadding,
+                                      subplots_verpadding=subplots_verpadding,
+                                      subplot_titles=subplot_titles)
+
         else:
             raise TypeError('when interactive=False, `data` must be a 2D/3D/4D ndarray or a tuple of 2D ndarrays')           
 
@@ -237,7 +269,6 @@ def plot_dataset(
     data, 
     interactive=True, 
     variable=None, 
-    groupby=None, 
     slice_time=None, 
     slice_level=None, 
     slice_lat=None, 
@@ -254,12 +285,13 @@ def plot_dataset(
     global_extent=False, 
     extent=None,
     dynamic=True, 
+    slider_controls=False,
     dpi=80, 
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
-    plot_size_px=1000, 
+    plot_size_px=600, 
     subplots_horpadding=0.05,
-    subplots_verpadding=0.05,
+    subplots_verpadding=0.15,
     verbose=True):
     """
     Plot an n-dimensional dataset (in-memory or from a path). The dataset is 
@@ -319,8 +351,8 @@ def plot_dataset(
     dpi : int
         [interactive=False] DPI of the mosaic figure.
     plot_size_px : int optional
-        [interactive=True] Value in pixels used to scale up or down the size of 
-        the ``hvplot`` figure.
+        [interactive=True] Value of the figure width in pixels, used to scale up 
+        or down the size of the ``hvplot`` figure.
 
     Notes
     -----
@@ -387,12 +419,6 @@ def plot_dataset(
                               slice_lon)  
     var_array = var_array.data_vars.__getitem__(variable)
     
-    if groupby is None:
-        if interactive:
-            groupby = ['time', 'level'] if var_array.ndim == 4 else 'time'
-        else:
-            groupby = 'time'
-    
     if not var_array.ndim in [3, 4]:
         raise TypeError('Variable is neither 3D nor 4D')
  
@@ -431,13 +457,15 @@ def plot_dataset(
             width = plot_size_px
             height = int(np.round(width / sizexy_ratio))
 
-        sizeargs = dict(height=height, width=width)
+        params = dict(height=height, width=width)
         project = False if wanted_projection is None else True
+
+        if slider_controls:
+            params['widget_type'] = 'scrubber'
     
         return var_array.hvplot(kind='image', 
-                                x='lon', 
+                                x='lon',
                                 y='lat', 
-                                groupby=groupby, 
                                 dynamic=dynamic, 
                                 colorbar=colorbar, 
                                 cmap=cmap, 
@@ -449,7 +477,7 @@ def plot_dataset(
                                 projection=wanted_projection, 
                                 global_extent=global_extent, 
                                 coastline=coastline, 
-                                **sizeargs)
+                                **params)
         
     ### Static mosaic with matplotlib
     else:                
@@ -461,7 +489,7 @@ def plot_dataset(
                 vmax = var_array.max().compute()   
                 vmax = np.array(vmax)
         
-        return _plot_mosaic_2d3or4d(var_array, 
+        return _plot_mosaic_3or4d(var_array, 
                                   show_colorbar=colorbar, 
                                   dpi=dpi, 
                                   cmap=cmap, 
@@ -480,7 +508,7 @@ def plot_dataset(
                                   subplots_verpadding=subplots_verpadding)
                 
 
-def _plot_mosaic_2d3or4d(
+def _plot_mosaic_3or4d(
     data, 
     show_colorbar=True, 
     dpi=100, 
@@ -532,11 +560,7 @@ def _plot_mosaic_2d3or4d(
         rows = data.time.shape[0]
     # use_xarray=False for plot_ndarray function
     else:
-        if data.ndim == 2:
-            sizexy_ratio = data.shape[1] / data.shape[0]
-            cols = 1
-            rows = 1
-        elif data.ndim == 3:
+        if data.ndim == 3:
             sizexy_ratio = data.shape[2] / data.shape[1]
             data_is_3d = True 
             if mosaic_orientation == 'col':
@@ -602,9 +626,9 @@ def _plot_mosaic_2d3or4d(
                         axis.set_title(subplot_titles[j], fontsize=10)
             else:
                 axis = ax[i, j]
-                image = data[i, j]
-                time = np.datetime64(image.time.values, 'm')
+                image = data[i, j]              
                 if use_xarray:
+                    time = np.datetime64(image.time.values, 'm')
                     level = image.level.values
                     axis.set_title(f'$\ittime$={time}, $\itlevel$={level}', 
                                    fontsize=10)
@@ -683,7 +707,7 @@ def _plot_mosaic_2d3or4d(
         show()
 
 
-def _plot_mosaic_tuple2d(
+def _plot_mosaic_2d(
     data, 
     show_colorbar=True, 
     dpi=100, 
@@ -710,11 +734,13 @@ def _plot_mosaic_tuple2d(
             # checking the elements are 2d 
             if not data[i].ndim == 2: # and data[i].shape[2] != 3: (excepting the case of 3 channels)
                 raise TypeError('`data` tuple has non-2D arrays')
+    elif isinstance(data, np.ndarray) and data.ndim == 2:
+        data = [data]
     else:
-        raise TypeError('`data` must be a tuple of 2D arrays')
+        raise TypeError('`data` must be a single 2D array or tuple of 2D arrays')
     
-    fist2d = data[0]
-    sizexy_ratio = fist2d.shape[1] / fist2d.shape[0]
+    first2d = data[0]
+    sizexy_ratio = first2d.shape[1] / first2d.shape[0]
 
     if extent is not None:
         lon_ini, lon_fin, lat_ini, lat_fin = extent
@@ -734,12 +760,13 @@ def _plot_mosaic_tuple2d(
                        subplot_kw={'projection': wanted_projection})
 
     for j in range(cols):
+        image = data[j]
         if cols == 1:
             axis = ax
-            image = data
+            if subplot_titles is not None:
+                axis.set_title(subplot_titles, fontsize=10)
         else:
             axis = ax[j]
-            image = data[j]
             if subplot_titles is not None:
                 axis.set_title(subplot_titles[j], fontsize=10)
        
