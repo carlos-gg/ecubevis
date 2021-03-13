@@ -46,6 +46,7 @@ def plot_ndarray(
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
     subplot_titles=None,
+    save=None,
     verbose=False, 
     ):
     """
@@ -158,7 +159,7 @@ def plot_ndarray(
                                         dpi=dpi, 
                                         cmap=cmap, 
                                         show_axis=axis, 
-                                        save=None, 
+                                        save=save, 
                                         vmin=vmin, 
                                         vmax=vmax, 
                                         transparent=False, 
@@ -185,7 +186,7 @@ def plot_ndarray(
                                         dpi=dpi, 
                                         cmap=cmap, 
                                         show_axis=axis, 
-                                        save=None, 
+                                        save=save, 
                                         vmin=vmin, 
                                         vmax=vmax, 
                                         transparent=False, 
@@ -210,7 +211,7 @@ def plot_ndarray(
                                           dpi=dpi, 
                                           cmap=cmap, 
                                           show_axis=axis, 
-                                          save=None, 
+                                          save=save, 
                                           vmin=vmin, 
                                           vmax=vmax, 
                                           transparent=False, 
@@ -251,7 +252,7 @@ def plot_ndarray(
                                       dpi=dpi, 
                                       cmap=cmap, 
                                       show_axis=axis, 
-                                      save=None, 
+                                      save=save, 
                                       vmin=vmin, 
                                       vmax=vmax, 
                                       transparent=False, 
@@ -700,7 +701,7 @@ def _plot_mosaic_3or4d(
     fig.subplots_adjust(wspace=subplots_horpadding, hspace=subplots_verpadding)
 
     if save is not None and isinstance(save, str):
-        savefig(save, dpi=dpi, bbox_inches='tight', pad_inches=0,
+        savefig(save, dpi=dpi, bbox_inches='tight', pad_inches=0.2,
                 transparent=transparent)
         close()
     else:
@@ -831,7 +832,7 @@ def _plot_mosaic_2d(
     fig.subplots_adjust(wspace=subplots_horpadding)
 
     if save is not None and isinstance(save, str):
-        savefig(save, dpi=dpi, bbox_inches='tight', pad_inches=0,
+        savefig(save, dpi=dpi, bbox_inches='tight', pad_inches=0.2,
                 transparent=transparent)
         close()
     else:
