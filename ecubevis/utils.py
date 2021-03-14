@@ -1,7 +1,8 @@
 import numpy as np
 
 __all__ = ['slice_dataset',
-           'fix_longitude']
+           'fix_longitude',
+           'fix_latitude']
 
 
 def fix_longitude(data):
@@ -12,6 +13,13 @@ def fix_longitude(data):
     data.coords['lon'] = (data.coords['lon'] + 180) % 360 - 180
     data = data.sortby(data.lon)
     return data
+
+
+def fix_latitude(data):
+    """
+    Reverse along latitude, 90º to -90º -> -90º to 90º
+    """
+    return data.reindex(lat=data.lat[::-1])
 
 
 def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None, 
@@ -49,9 +57,11 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
     """ 
     data = check_coords(data)
 
-    # If central longitude is 180º (not 0º)
     if np.any(data.lon > 180):
         data = fix_longitude(data)
+
+    if data.lat[0] > data.lat[-1]:
+        data = fix_latitude(data)
 
     if slice_time is not None and 'time' in data.coords:
         if isinstance(slice_time, tuple) and isinstance(slice_time[0], str):
