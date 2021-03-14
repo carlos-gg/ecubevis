@@ -303,8 +303,8 @@ def plot_dataset(
     ----------
     data : xarray Dataset/Dataarray or str
         Xarray (in memory) object or string with the path to the corresponding 
-        NetCDF/IRIS/GRIB file. Expected dimensions: 3D array [time, lat, lon] or
-        4D array [time, level, lat, lon].
+        NetCDF/IRIS/GRIB file. Expected dimensions: 2D [lat, lon], 3D array 
+        [time, lat, lon] or 4D array [time, level, lat, lon].
     interactive : bool optional
         Whether to display an interactive plot (using ``hvplot``) with a 
         slider across the dimension set by ``groupby`` or an static mosaic 
@@ -384,9 +384,9 @@ def plot_dataset(
         data = data.to_dataset()
 
     ### Selecting the variable 
-    if variable is None: # taking the first 3D or 4D data variable
+    if variable is None: # taking the first 2D, 3D or 4D data variable
         for i in data.data_vars:
-            if data.data_vars.__getitem__(i).ndim >= 3:
+            if data.data_vars.__getitem__(i).ndim >= 2:
                 variable = i
     elif isinstance(variable, int):
         variable = list(data.keys())[variable]
@@ -396,10 +396,11 @@ def plot_dataset(
     
     ### Getting info
     shape = data.data_vars.__getitem__(variable).shape
-    tini = data.data_vars.__getitem__(variable).time[0].values
-    tini = np.datetime_as_string(tini, unit='m')
-    tfin = data.data_vars.__getitem__(variable).time[-1].values
-    tfin = np.datetime_as_string(tfin, unit='m')
+    if len(shape) >= 3:
+        tini = data.data_vars.__getitem__(variable).time[0].values
+        tini = np.datetime_as_string(tini, unit='m')
+        tfin = data.data_vars.__getitem__(variable).time[-1].values
+        tfin = np.datetime_as_string(tfin, unit='m')
     var_array = check_coords(data)
     
     ### Slicing the array variable
@@ -420,15 +421,17 @@ def plot_dataset(
                               slice_lon)  
     var_array = var_array.data_vars.__getitem__(variable)
     
-    if not var_array.ndim in [3, 4]:
-        raise TypeError('Variable is neither 3D nor 4D')
+    if var_array.ndim == 4: 
+        dimp = '4D'
+    elif var_array.ndim == 3: 
+        dimp = '3D'
+    elif var_array.ndim == 2:
+        dimp = '2D'
+    else:
+        raise TypeError('Variable is neither 2D, 3D nor 4D')
  
     if verbose in [1, 2]:
         shape_slice = var_array.shape
-        # assuming the min temporal sampling unit is minutes
-        tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
-        tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m')
-        dimp = '4D' if var_array.ndim == 4 else '3D'
         if hasattr(var_array, 'long_name'):
             print(f'{_bold("Name")} {variable}, {var_array.long_name}')
         else:
@@ -438,8 +441,12 @@ def plot_dataset(
         print(f'{_bold("Dimensionality:")} {dimp}') 
         print(f'{_bold("Shape:")} {shape}')
         print(f'{_bold("Shape (sliced array):")} {shape_slice}')
-        print(f'{_bold("Time interval:")} {tini} --> {tfin}')
-        print(f'{_bold("Time interval (sliced array):")} {tini_slice} --> {tfin_slice}\n')
+        if dimp == '3D' or dimp == '4D':
+            # assuming the min temporal sampling unit is minutes
+            tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
+            tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m') 
+            print(f'{_bold("Time interval:")} {tini} --> {tfin}')
+            print(f'{_bold("Time interval (sliced array):")} {tini_slice} --> {tfin_slice}\n')
     if verbose in [2]:
         print(data.coords)
         print(data.data_vars, '\n')
@@ -552,18 +559,18 @@ def _plot_mosaic_3or4d(
     # use_xarray=True for plot_dataset function
     if use_xarray:
         sizexy_ratio = data.lon.shape[0] / data.lat.shape[0]
-        if 'level' in data.coords:
+        if data.ndim == 4 and 'level' in data.coords:
             cols = data.level.shape[0]
-            data_is_3d = False
+        elif data.ndim == 3:
+            cols = 1
+            rows = data.time.shape[0]
         else:
             cols = 1
-            data_is_3d = True
-        rows = data.time.shape[0]
+            rows = 1
     # use_xarray=False for plot_ndarray function
     else:
         if data.ndim == 3:
             sizexy_ratio = data.shape[2] / data.shape[1]
-            data_is_3d = True 
             if mosaic_orientation == 'col':
                 cols = 1
                 rows = data.shape[0]
@@ -573,8 +580,11 @@ def _plot_mosaic_3or4d(
         elif data.ndim == 4:
             sizexy_ratio = data.shape[3] / data.shape[2]
             cols = data.shape[1]
-            rows = data.shape[0]     
-            data_is_3d = False
+            rows = data.shape[0]
+        elif data.ndim == 2:
+            sizexy_ratio = data.shape[0] / data.shape[1]
+            cols = 1
+            rows = 1
 
     if use_xarray:
         lon_ini = data.lon[0].values
@@ -590,7 +600,7 @@ def _plot_mosaic_3or4d(
             extent_known = False
 
     colorbarzone = 1.4 if show_colorbar else 1 
-    if mosaic_orientation == 'row' and data_is_3d:
+    if mosaic_orientation == 'row' and data.ndim == 3:
         figsize = (max(8, rows*2) * sizexy_ratio * colorbarzone, max(8, cols*2)) 
     else:
         figsize = (max(8, cols*2) * sizexy_ratio * colorbarzone, max(8, rows*2)) 
@@ -613,7 +623,7 @@ def _plot_mosaic_3or4d(
                 else:
                     axis = ax[i]
                     image = data[i]
-                if use_xarray:
+                if use_xarray and data.ndim != 2:
                     time = np.datetime64(image.time.values, 'm')
                     axis.set_title(f'$\ittime$={time}', fontsize=10)
             elif rows == 1:
