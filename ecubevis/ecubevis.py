@@ -32,6 +32,7 @@ def _bold(string):
 def plot_ndarray(
     data, 
     interactive=True, 
+    multichannel4d=False,
     colorbar=True, 
     axis=True, 
     cmap='viridis', 
@@ -60,6 +61,12 @@ def plot_ndarray(
         Whether to display an interactive (with ``bokeh``) or static (with
         ``matplotlib``) plot. In the case of a 3D ndarray, a slider will be used 
         to explore the data across time and/or vertical levels.
+    multichannel4d : bool, optional
+        If True, the dimensions of a 4D array are assumed [time, y, x, channels]
+        which is useful for visualizing sequences of images with multiple 
+        channels or variables. By default the order of the dimensions expected 
+        in a 4D array are [time, z, y, x] to match the dimensions of ndarrays 
+        contained in 4D xr.Datasets [time, level, lat, lon]. 
     colorbar : bool optional
         Whether to show the colorbar.
     axis : bool optional
@@ -101,12 +108,20 @@ def plot_ndarray(
             max_frames = data.shape[0]
             sizexy_ratio = data.shape[2] / data.shape[1]
         elif data.ndim == 4:
-            # adding a level dimension
-            ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
-                             range(data.shape[1]), range(data.shape[0]), data),
-                            ['x', 'y', 'level', 'time'], 'values')
-            max_frames = data.shape[0] * data.shape[1]
-            sizexy_ratio = data.shape[3] / data.shape[2]
+            if multichannel4d:
+                # adding a channel dimension
+                ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
+                                 range(data.shape[1]), range(data.shape[0]), data),
+                                ['channels', 'x', 'y', 'time'], 'values')
+                max_frames = data.shape[0] * data.shape[3]
+                sizexy_ratio = data.shape[2] / data.shape[1]
+            else:
+                # adding a level dimension
+                ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
+                                 range(data.shape[1]), range(data.shape[0]), data),
+                                ['x', 'y', 'level', 'time'], 'values')
+                max_frames = data.shape[0] * data.shape[1]
+                sizexy_ratio = data.shape[3] / data.shape[2]
         else:
             raise TypeError('`data` must be 3D or 4D when interactive=True')
 
