@@ -96,7 +96,10 @@ def plot_ndarray(
     """
     if interactive:
         hv.extension('bokeh') # matplotlib is another option
-        if data.ndim == 3:
+        if isinstance(data, tuple):
+            msg = '`data` is a tuple. This is supported only when `interactive=False`'
+            raise ValueError(msg)
+        elif isinstance(data, np.ndarray) and data.ndim == 3:
             # Dataset((X, Y, Z), Data), where
             # X is a 1D array of shape M ,
             # Y is a 1D array of shape N and
@@ -107,7 +110,7 @@ def plot_ndarray(
                              ['x', 'y', 'time'], 'values')
             max_frames = data.shape[0]
             sizexy_ratio = data.shape[2] / data.shape[1]
-        elif data.ndim == 4:
+        elif isinstance(data, np.ndarray) and data.ndim == 4:
             if multichannel4d:
                 # adding a channel dimension
                 ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
@@ -278,7 +281,8 @@ def plot_ndarray(
                                       subplot_titles=subplot_titles)
 
         else:
-            raise TypeError('when interactive=False, `data` must be a 2D/3D/4D ndarray or a tuple of 2D ndarrays')           
+            msg = '`data` must be a 2D/3D/4D ndarray or a tuple of 2D ndarrays when interactive=False'
+            raise TypeError(msg)           
 
 
 def plot_dataset(
