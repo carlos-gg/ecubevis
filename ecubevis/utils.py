@@ -81,18 +81,18 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
     return data
 
 
-def check_coords(ndarray):
+def check_coords(dataset):
     standard_names = ['lat', 'lon', 'level', 'time', 'lat', 'lon', 'lat', 'lon']
     alternative_names = ['latitude', 'longitude', 'height', 'frequency', 'y', 'x', 'Y', 'X']
 
-    for c in ndarray.coords:
+    for c in dataset.coords:
         if c not in standard_names + alternative_names:
             msg = f'Xarray Dataset/Dataarray contains unknown coordinates. '
             msg += f'Must be one of: {standard_names} or {alternative_names}'
             raise ValueError(msg)
 
     for i, altname in enumerate(alternative_names):
-        if altname in ndarray.coords:
-            ndarray = ndarray.rename({alternative_names[i]: standard_names[i]})
-    return ndarray
+        if altname in dataset.coords:
+            dataset = dataset.rename({alternative_names[i]: standard_names[i]})
+    return dataset
 

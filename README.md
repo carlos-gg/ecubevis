@@ -1,6 +1,6 @@
 # Welcome to the repository of ecubevis
 
-`ecubevis`: Earth CUBE VISualization with Python. Intended for the interactive exploration of n-dimensional (2D, 3D or 4D spatio-temporal) arrays on Jupyterlab. Supports both ``xarray.Dataset/DataArray`` (with metadata) or ``numpy.ndarray`` objects. In both cases, the dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays, but for a ``numpy.ndarray`` object the dimensions are implicit, since it lacks metadata. 
+`ecubevis`: Earth CUBE VISualization with Python. Intended for the interactive exploration of n-dimensional (2D, 3D or 4D spatio-temporal) arrays on Jupyterlab. Supports both ``xarray.Dataset/DataArray`` (with metadata) or ``numpy.ndarray`` objects. 
 
 ## For BSC-ES users
 
@@ -18,7 +18,11 @@ That's it, you are ready to import `ecubevis` from this folder (assumining you'v
 
 ## How to use
 
-... WIP ... 
+The two main functions are: 
+
+* ``plot_ndarray``: For plotting an in-memory ``numpy.ndarray`` with 2, 3 or 4 dimensions (the dimensions are implicit, since no metadata is associated to the grids). The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays. 
+
+* ``plot_dataset``: For plotting an in-memory ``xr.Dataset`` or ``xr.DataArray`` objects with 2, 3, or 4 dimensions. The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays.  
 
 ## Screenshots
 
