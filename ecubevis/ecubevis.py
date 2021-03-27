@@ -1,23 +1,21 @@
-from typing import Type
-import matplotlib
 import numpy as np
 import holoviews as hv
 import xarray as xr
 import hvplot.xarray 
 import cartopy.crs as crs
 import holoviews as hv
-import matplotlib as mpl
 import matplotlib.colors as colors
-from matplotlib.pyplot import colorbar, show, savefig, close, subplots, Axes
+from matplotlib.pyplot import show, savefig, close, subplots, Axes
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from cartopy.mpl.geoaxes import GeoAxes
 from .io import load_transform_mfdataset
 from .utils import check_coords, slice_dataset
-mpl.rcParams['axes.linewidth'] = 0.1
+
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 __all__ = ['plot_dataset',
            'plot_ndarray',
@@ -255,7 +253,7 @@ def plot_ndarray(
                     data = data[:max_static_subplot_rows]
                 if data.shape[1] > max_static_subplot_cols:
                     data = data[:, :max_static_subplot_cols]
-                    mosaic_orientation = 'col'
+                mosaic_orientation = 'col'
 
             if share_dynamic_range:
                 if vmin is None:
@@ -724,6 +722,11 @@ def _plot_mosaic_3or4d(
 
             if not show_axis:
                 axis.set_axis_off()
+            else:
+                axis.spines["right"].set_linewidth(0.1)
+                axis.spines["left"].set_linewidth(0.1)
+                axis.spines["top"].set_linewidth(0.1)
+                axis.spines["bottom"].set_linewidth(0.1)
 
     if show_colorbar:
         subplots_horpadding += 0.05
@@ -786,7 +789,8 @@ def _plot_mosaic_2d(
         wanted_projection = data_projection
         print(f'Assuming {wanted_projection} projection')
 
-    fig, ax = subplots(1, cols, sharex='col', dpi=dpi, figsize=figsize, constrained_layout=False, 
+    fig, ax = subplots(1, cols, sharex='col', dpi=dpi, figsize=figsize, 
+                       constrained_layout=False, 
                        subplot_kw={'projection': wanted_projection})
 
     for j in range(cols):
@@ -855,6 +859,11 @@ def _plot_mosaic_2d(
 
         if not show_axis:
             axis.set_axis_off()
+        else:
+            axis.spines["right"].set_linewidth(0.1)
+            axis.spines["left"].set_linewidth(0.1)
+            axis.spines["top"].set_linewidth(0.1)
+            axis.spines["bottom"].set_linewidth(0.1)
 
     if show_colorbar:
         subplots_horpadding += 0.05 * len(data)
