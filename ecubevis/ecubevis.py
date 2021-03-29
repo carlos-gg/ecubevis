@@ -1,11 +1,12 @@
 import numpy as np
+from numpy.lib.arraysetops import isin
 import holoviews as hv
 import xarray as xr
 import hvplot.xarray 
 import cartopy.crs as crs
 import holoviews as hv
 import matplotlib.colors as colors
-from matplotlib.pyplot import show, savefig, close, subplots, Axes
+from matplotlib.pyplot import colorbar, show, savefig, close, subplots, Axes
 from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
@@ -29,19 +30,20 @@ def _bold(string):
 
 def plot_ndarray(
     data, 
-    interactive=True, 
+    interactive=False, 
     multichannel4d=False,
-    colorbar=True, 
-    axis=True, 
+    show_colorbar=True, 
+    share_colorbar=False,
+    show_axis=True, 
     cmap='viridis', 
-    share_dynamic_range=True,
+    share_dynamic_range=False,
     vmin=None, 
     vmax=None, 
     dpi=80,
     plot_size_px=600,
     coastline=False,
-    subplots_horpadding=0.1,
-    subplots_verpadding=0.1,
+    horizontal_padding=0.1,
+    vertical_padding=0.1,
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
     subplot_titles=None,
@@ -67,12 +69,14 @@ def plot_ndarray(
         contained in 4D xr.Datasets [time, level, lat, lon]. 
     colorbar : bool optional
         Whether to show the colorbar.
-    axis : bool optional
+    show_axis : bool optional
         Whether to show the axis.
     cmap : str or matplotlib.cm, optional
         Colormap, eg. viridis" or ecv.cm.viridis. 
     share_dynamic_range : bool optional
-        Whether to share the dynamic range among mosaic subplots.
+        Whether to share the dynamic range among mosaic subplots, taking the 
+        min and max values of all the subplots. Overrides the values of ``vmin`` 
+        and ``vmax``.
     vmin : float or None
         Min value to be displayed.
     vmax : float or None
@@ -156,7 +160,7 @@ def plot_ndarray(
             width += cb_pad + cb_wid + cb_tick
 
         return image_stack.opts(hv.opts.Image(cmap=hv_cm,
-                                              colorbar=colorbar,
+                                              colorbar=show_colorbar,
                                               colorbar_opts={'width': 15,
                                                              'padding': 5},
                                               width=width, 
@@ -164,78 +168,41 @@ def plot_ndarray(
                                               tools=['hover'],
                                               **params)) 
 
-    # Non-interactive or static matplotlib plotting
+    # Non-interactive (static) matplotlib plot
     else:
-        # Plotting a single 2D ndarray
-        if isinstance(data, np.ndarray) and data.ndim == 2:
-            if verbose:
-                print('Plotting a single 2D np.ndarray')
-            return _plot_mosaic_2d(data,
-                                        show_colorbar=colorbar, 
-                                        dpi=dpi, 
-                                        cmap=cmap, 
-                                        show_axis=axis, 
-                                        save=save, 
-                                        vmin=vmin, 
-                                        vmax=vmax, 
-                                        transparent=False, 
-                                        coastline=coastline, 
-                                        subplots_horpadding=subplots_horpadding,
-                                        subplot_titles=subplot_titles)
-        # Plotting a tuple of 2D arrays
-        elif isinstance(data, tuple):
-            if verbose:
-                print('Plotting a tuple of 2D np.ndarrays')
-            list_x = []
-            list_y = []
-            for i in range(len(data)):
-                list_y.append(data[i].shape[0])
-                list_x.append(data[i].shape[1])
-                # checking the elements are 2d 
-                if not data[i].ndim == 2: # and data[i].shape[2] != 3: (excepting the case of 3 channels)
-                    raise TypeError('tuple has non-2D arrays')
-            
-            # different image sizes in tuple
-            if not all(x == list_x[0] for x in list_x) or not all(y == list_y[0] for y in list_y):
-                return _plot_mosaic_2d(data,
-                                        show_colorbar=colorbar, 
-                                        dpi=dpi, 
-                                        cmap=cmap, 
-                                        show_axis=axis, 
-                                        save=save, 
-                                        vmin=vmin, 
-                                        vmax=vmax, 
-                                        transparent=False, 
-                                        coastline=coastline, 
-                                        subplots_horpadding=subplots_horpadding,
-                                        subplot_titles=subplot_titles)
-            # equal image sizes in tuple
-            else:
-                data = np.concatenate([np.expand_dims(im, 0) for im in data], 
-                                      axis=0)
-                mosaic_orientation = 'row'
-                if share_dynamic_range:
-                    if vmin is None:
-                        vmin = data.min()
-                        vmin = np.array(vmin)
-                    if vmax is None:
-                        vmax = data.max() 
-                        vmax = np.array(vmax)
-                
-                return _plot_mosaic_3or4d(data, 
-                                          show_colorbar=colorbar, 
-                                          dpi=dpi, 
-                                          cmap=cmap, 
-                                          show_axis=axis, 
-                                          save=save, 
-                                          vmin=vmin, 
-                                          vmax=vmax, 
-                                          transparent=False, 
-                                          coastline=coastline, 
-                                          mosaic_orientation=mosaic_orientation,
-                                          subplots_horpadding=subplots_horpadding,
-                                          subplots_verpadding=subplots_verpadding,
-                                          subplot_titles=subplot_titles)
+        # Plotting a single 2D ndarray or a tuple of 2D arrays
+        if (isinstance(data, np.ndarray) and data.ndim == 2) or isinstance(data, tuple):
+            if isinstance(data, np.ndarray) and data.ndim == 2:
+                if verbose:
+                    print('Plotting a single 2D np.ndarray')
+
+            elif isinstance(data, tuple):
+                if verbose:
+                    print('Plotting a tuple of 2D np.ndarrays')
+                list_x = []
+                list_y = []
+                for i in range(len(data)):
+                    list_y.append(data[i].shape[0])
+                    list_x.append(data[i].shape[1])
+                    # checking the elements are 2d 
+                    if not data[i].ndim == 2: # and data[i].shape[2] != 3: (excepting the case of 3 channels)
+                        raise TypeError('tuple has non-2D arrays')
+
+            return _plot_mosaic_2d(
+                data,
+                show_colorbar=show_colorbar, 
+                share_colorbar=share_colorbar,
+                share_dynamic_range=share_dynamic_range,
+                dpi=dpi, 
+                cmap=cmap, 
+                show_axis=show_axis, 
+                save=save, 
+                vmin=vmin, 
+                vmax=vmax, 
+                transparent=False, 
+                coastline=coastline, 
+                horizontal_padding=horizontal_padding,
+                subplot_titles=subplot_titles)
         
         # Plotting a 3D or 4D array
         elif isinstance(data, np.ndarray):
@@ -263,24 +230,25 @@ def plot_ndarray(
                     vmax = data.max() 
                     vmax = np.array(vmax)
             
-            return _plot_mosaic_3or4d(data, 
-                                      show_colorbar=colorbar, 
-                                      dpi=dpi, 
-                                      cmap=cmap, 
-                                      show_axis=axis, 
-                                      save=save, 
-                                      vmin=vmin, 
-                                      vmax=vmax, 
-                                      transparent=False, 
-                                      coastline=coastline, 
-                                      mosaic_orientation=mosaic_orientation,
-                                      subplots_horpadding=subplots_horpadding,
-                                      subplots_verpadding=subplots_verpadding,
-                                      subplot_titles=subplot_titles)
+            return _plot_mosaic_3or4d(
+                data, 
+                show_colorbar=show_colorbar, 
+                dpi=dpi, 
+                cmap=cmap, 
+                show_axis=show_axis, 
+                save=save, 
+                vmin=vmin, 
+                vmax=vmax, 
+                transparent=False, 
+                coastline=coastline, 
+                mosaic_orientation=mosaic_orientation,
+                horizontal_padding=horizontal_padding,
+                vertical_padding=vertical_padding,
+                subplot_titles=subplot_titles)
 
         else:
-            msg = '`data` must be a 2D/3D/4D ndarray or a tuple of 2D ndarrays when interactive=False'
-            raise TypeError(msg)           
+            raise TypeError('`data` must be a 2D/3D/4D ndarray or a tuple of 2D'
+                            ' ndarrays when interactive=False')           
 
 
 def plot_dataset(
@@ -291,7 +259,7 @@ def plot_dataset(
     slice_level=None, 
     slice_lat=None, 
     slice_lon=None, 
-    colorbar=True, 
+    show_colorbar=True, 
     cmap='viridis', 
     logz=False, 
     share_dynamic_range=True, 
@@ -308,8 +276,8 @@ def plot_dataset(
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
     plot_size_px=600, 
-    subplots_horpadding=0.05,
-    subplots_verpadding=0.15,
+    horizontal_padding=0.05,
+    vertical_padding=0.15,
     verbose=True):
     """
     Plot an n-dimensional dataset (in-memory or from a path). The dataset is 
@@ -341,7 +309,7 @@ def plot_dataset(
     slice_lon : tuple of int or None, optional
         Tuple with initial and final values for slicing the lon dimension. If 
         None, the array is not sliced accross this dimension.
-    colorbar : bool optional
+    show_colorbar : bool optional
         Whether to show a colorbar.
     cmap : str or matplotlib.cm, optional
         Colormap, eg. viridis" or ecv.cm.viridis.  
@@ -488,21 +456,22 @@ def plot_dataset(
         if slider_controls:
             params['widget_type'] = 'scrubber'
     
-        return var_array.hvplot(kind='image', 
-                                x='lon',
-                                y='lat', 
-                                dynamic=dynamic, 
-                                colorbar=colorbar, 
-                                cmap=cmap, 
-                                shared_axes=True, 
-                                legend=True, 
-                                logz=logz, 
-                                widget_location='top', 
-                                project=project, 
-                                projection=wanted_projection, 
-                                global_extent=global_extent, 
-                                coastline=coastline, 
-                                **params)
+        return var_array.hvplot(
+            kind='image', 
+            x='lon',
+            y='lat', 
+            dynamic=dynamic, 
+            colorbar=show_colorbar, 
+            cmap=cmap, 
+            shared_axes=True, 
+            legend=True, 
+            logz=logz, 
+            widget_location='top', 
+            project=project, 
+            projection=wanted_projection, 
+            global_extent=global_extent, 
+            coastline=coastline, 
+            **params)
         
     ### Static mosaic with matplotlib
     else:                
@@ -514,23 +483,24 @@ def plot_dataset(
                 vmax = var_array.max().compute()   
                 vmax = np.array(vmax)
         
-        return _plot_mosaic_3or4d(var_array, 
-                                  show_colorbar=colorbar, 
-                                  dpi=dpi, 
-                                  cmap=cmap, 
-                                  logscale=logz, 
-                                  show_axis=True, 
-                                  save=None, 
-                                  vmin=vmin, 
-                                  vmax=vmax, 
-                                  transparent=False, 
-                                  coastline=coastline, 
-                                  wanted_projection=wanted_projection,
-                                  data_projection=data_projection,
-                                  global_extent=global_extent,
-                                  extent=extent,
-                                  subplots_horpadding=subplots_horpadding,
-                                  subplots_verpadding=subplots_verpadding)
+        return _plot_mosaic_3or4d(
+            var_array, 
+            show_colorbar=show_colorbar, 
+            dpi=dpi, 
+            cmap=cmap, 
+            logscale=logz, 
+            show_axis=True, 
+            save=None, 
+            vmin=vmin, 
+            vmax=vmax, 
+            transparent=False, 
+            coastline=coastline, 
+            wanted_projection=wanted_projection,
+            data_projection=data_projection,
+            global_extent=global_extent,
+            extent=extent,
+            horizontal_padding=horizontal_padding,
+            vertical_padding=vertical_padding)
                 
 
 def _plot_mosaic_3or4d(
@@ -550,10 +520,9 @@ def _plot_mosaic_3or4d(
     global_extent=False,
     extent=None,
     mosaic_orientation='col',
-    subplots_horpadding=0.05,
-    subplots_verpadding=0.05,
-    subplot_titles=None,
-    overlay_labels=None):
+    horizontal_padding=0.05,
+    vertical_padding=0.05,
+    subplot_titles=None):
     """
     
     Ticks with non-rectangular projection supported in Carotpy 0.18
@@ -698,7 +667,7 @@ def _plot_mosaic_3or4d(
                     if i == rows - 1:
                         axis.set_xlabel("$\it{lon}$", fontsize=10)
                      
-                axis.tick_params(labelsize=8)
+            axis.tick_params(labelsize=8)
 
             if global_extent:
                 axis.set_global()  
@@ -729,8 +698,8 @@ def _plot_mosaic_3or4d(
                 axis.spines["bottom"].set_linewidth(0.1)
 
     if show_colorbar:
-        subplots_horpadding += 0.05
-    fig.subplots_adjust(wspace=subplots_horpadding, hspace=subplots_verpadding)
+        horizontal_padding += 0.02
+    fig.subplots_adjust(wspace=horizontal_padding, hspace=vertical_padding)
 
     if save is not None and isinstance(save, str):
         savefig(save, dpi=dpi, bbox_inches='tight', pad_inches=0.2,
@@ -743,6 +712,8 @@ def _plot_mosaic_3or4d(
 def _plot_mosaic_2d(
     data, 
     show_colorbar=True, 
+    share_colorbar=False,
+    share_dynamic_range=False,
     dpi=100, 
     cmap='viridis', 
     logscale=False, 
@@ -756,9 +727,8 @@ def _plot_mosaic_2d(
     data_projection=None,
     global_extent=False,
     extent=None,
-    subplots_horpadding=0.05,
-    subplot_titles=None,
-    overlay_labels=None):
+    horizontal_padding=0.05,
+    subplot_titles=None):
     """
     """
     params = dict()
@@ -772,6 +742,17 @@ def _plot_mosaic_2d(
     else:
         raise TypeError('`data` must be a single 2D array or tuple of 2D arrays')
     
+    if share_colorbar:
+        if (vmin is None or vmax is None) and not share_dynamic_range:
+            raise ValueError('When `share_colorbar=True`, `vmin` and `vmax` '
+                             'must be given or `share_dynamic_range=True`')
+
+    if share_dynamic_range:
+        minvals = [im.min() for im in data]
+        vmin = np.min(minvals)
+        maxvals = [im.max() for im in data]
+        vmax = np.max(maxvals)
+
     first2d = data[0]
     sizexy_ratio = first2d.shape[1] / first2d.shape[0]
 
@@ -839,7 +820,7 @@ def _plot_mosaic_2d(
                 axis.set_ylabel("$\it{lat}$", fontsize=10)
                 axis.set_xlabel("$\it{lon}$", fontsize=10)
                     
-            axis.tick_params(labelsize=8)
+        axis.tick_params(labelsize=8)
 
         if global_extent:
             axis.set_global()  
@@ -847,15 +828,28 @@ def _plot_mosaic_2d(
         im = axis.imshow(image, origin='lower', interpolation='nearest', 
                          cmap=cmap, norm=norm, vmin=vmin, vmax=vmax, **params)
 
-        if show_colorbar:
-            divider = make_axes_locatable(axis)
-            # the width of cax is 2% of axis and the padding is 0.1 inch
-            cax = divider.append_axes("right", size="2%", pad=0.1, 
-                                        axes_class=Axes)
-            cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
-                                format=None) #format='%1.2e'
-            cb.outline.set_linewidth(0.1)
-            cb.ax.tick_params(labelsize=8)
+        if show_colorbar: 
+            if not share_colorbar:
+                divider = make_axes_locatable(axis)
+                # the width of cax is 2% of axis and the padding is 0.1 inch
+                cax = divider.append_axes("right", size="2%", pad=0.1, 
+                                          axes_class=Axes)
+                cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
+                                  format=None) #format='%1.2e'
+                cb.outline.set_linewidth(0.1)
+                cb.ax.tick_params(labelsize=8)
+            else:
+                if j+1 == cols:
+                    fig.subplots_adjust(right=0.8)
+                    axpos = axis.get_position()
+                    cbar_pad = axpos.width * cols * 0.01 
+                    cbar_width = axpos.width * cols * 0.02
+                    cax = fig.add_axes([axpos.x0 + axpos.width + cbar_pad, 
+                                        axpos.y0, cbar_width, axpos.height])
+                    cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
+                                      format=None) #format='%1.2e'
+                    cb.outline.set_linewidth(0.1)
+                    cb.ax.tick_params(labelsize=8)
 
         if not show_axis:
             axis.set_axis_off()
@@ -866,8 +860,8 @@ def _plot_mosaic_2d(
             axis.spines["bottom"].set_linewidth(0.1)
 
     if show_colorbar:
-        subplots_horpadding += 0.05 * len(data)
-    fig.subplots_adjust(wspace=subplots_horpadding)
+        horizontal_padding += 0.02 * len(data)
+    fig.subplots_adjust(wspace=horizontal_padding)
 
     if save is not None and isinstance(save, str):
         savefig(save, dpi=dpi, bbox_inches='tight', pad_inches=0.2,
