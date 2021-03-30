@@ -170,6 +170,9 @@ def plot_ndarray(
 
     # Non-interactive (static) matplotlib plot
     else:
+        if isinstance(data, np.ndarray):
+            data = np.squeeze(data)  # removing axes/dims of lenght one
+
         # Plotting a single 2D ndarray or a tuple of 2D arrays
         if (isinstance(data, np.ndarray) and data.ndim == 2) or isinstance(data, tuple):
             if isinstance(data, np.ndarray) and data.ndim == 2:
@@ -179,13 +182,9 @@ def plot_ndarray(
             elif isinstance(data, tuple):
                 if verbose:
                     print('Plotting a tuple of 2D np.ndarrays')
-                list_x = []
-                list_y = []
                 for i in range(len(data)):
-                    list_y.append(data[i].shape[0])
-                    list_x.append(data[i].shape[1])
                     # checking the elements are 2d 
-                    if not data[i].ndim == 2: # and data[i].shape[2] != 3: (excepting the case of 3 channels)
+                    if not np.squeeze(data[i]).ndim == 2: # and data[i].shape[2] != 3: (excepting the case of 3 channels)
                         raise TypeError('tuple has non-2D arrays')
 
             return _plot_mosaic_2d(
@@ -667,7 +666,7 @@ def _plot_mosaic_3or4d(
                     if i == rows - 1:
                         axis.set_xlabel("$\it{lon}$", fontsize=10)
                      
-            axis.tick_params(labelsize=8)
+            axis.tick_params(labelsize=6)
 
             if global_extent:
                 axis.set_global()  
@@ -733,12 +732,11 @@ def _plot_mosaic_2d(
     """
     params = dict()
     if isinstance(data, tuple):
+        tuple_data = []
         for i in range(len(data)):
-            # checking the elements are 2d 
-            if not data[i].ndim == 2: # and data[i].shape[2] != 3: (excepting the case of 3 channels)
-                raise TypeError('`data` tuple has non-2D arrays')
+            tuple_data.append(np.squeeze(data[i]))
     elif isinstance(data, np.ndarray) and data.ndim == 2:
-        data = [data]
+        tuple_data = [data]
     else:
         raise TypeError('`data` must be a single 2D array or tuple of 2D arrays')
     
@@ -748,12 +746,12 @@ def _plot_mosaic_2d(
                              'must be given or `share_dynamic_range=True`')
 
     if share_dynamic_range:
-        minvals = [im.min() for im in data]
+        minvals = [im.min() for im in tuple_data]
         vmin = np.min(minvals)
-        maxvals = [im.max() for im in data]
+        maxvals = [im.max() for im in tuple_data]
         vmax = np.max(maxvals)
 
-    first2d = data[0]
+    first2d = tuple_data[0]
     sizexy_ratio = first2d.shape[1] / first2d.shape[0]
 
     if extent is not None:
@@ -763,7 +761,7 @@ def _plot_mosaic_2d(
         extent_known = False
 
     colorbarzone = 1.4 if show_colorbar else 1 
-    cols = len(data)
+    cols = len(tuple_data)
     figsize = (8 * sizexy_ratio * colorbarzone, max(8, cols*2)) 
 
     if wanted_projection is None and extent_known:
@@ -775,7 +773,7 @@ def _plot_mosaic_2d(
                        subplot_kw={'projection': wanted_projection})
 
     for j in range(cols):
-        image = data[j]
+        image = tuple_data[j]
         if cols == 1:
             axis = ax
             if subplot_titles is not None:
@@ -820,7 +818,7 @@ def _plot_mosaic_2d(
                 axis.set_ylabel("$\it{lat}$", fontsize=10)
                 axis.set_xlabel("$\it{lon}$", fontsize=10)
                     
-        axis.tick_params(labelsize=8)
+        axis.tick_params(labelsize=6)
 
         if global_extent:
             axis.set_global()  
