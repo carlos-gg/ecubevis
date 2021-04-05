@@ -42,7 +42,7 @@ def plot_ndarray(
     dpi=80,
     plot_size_px=600,
     coastline=False,
-    horizontal_padding=0.1,
+    horizontal_padding=0.2,
     vertical_padding=0.1,
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
@@ -150,7 +150,7 @@ def plot_ndarray(
         if colorbar:
             cb_wid = 15
             cb_pad = 5
-            tick_len = len(str(int(data.max())))
+            tick_len = len(str(data.max()))
             if tick_len < 4:
                 cb_tick = 25
             elif tick_len == 4:
@@ -204,14 +204,15 @@ def plot_ndarray(
                 subplot_titles=subplot_titles)
         
         # Plotting a 3D or 4D array
-        elif isinstance(data, np.ndarray):
-            # max static subplots, assuming [time, level, lat, lon]  
+        elif isinstance(data, np.ndarray):  
+            # max static subplots, assuming [time, lat, lon]
             if data.ndim == 3:
                 if verbose:
                     print('Plotting a single 3D np.ndarray')
                 if data.shape[0] > max_static_subplot_rows:
                     data = data[:max_static_subplot_rows]
-                    mosaic_orientation = 'col'
+                mosaic_orientation = 'row'
+            # max static subplots, assuming [time, level, lat, lon]
             if data.ndim == 4:
                 if verbose:
                     print('Plotting a single 4D np.ndarray')
@@ -519,7 +520,7 @@ def _plot_mosaic_3or4d(
     global_extent=False,
     extent=None,
     mosaic_orientation='col',
-    horizontal_padding=0.05,
+    horizontal_padding=0.2,
     vertical_padding=0.05,
     subplot_titles=None):
     """
@@ -584,7 +585,10 @@ def _plot_mosaic_3or4d(
         else:
             extent_known = False
 
-    colorbarzone = 1.4 if show_colorbar else 1 
+    if show_colorbar:
+        colorbarzone = 1.4
+    else:
+        colorbarzone = 1 
     if mosaic_orientation == 'row' and data.ndim == 3:
         figsize = (max(8, rows*2) * sizexy_ratio * colorbarzone, max(8, cols*2)) 
     else:
@@ -619,7 +623,10 @@ def _plot_mosaic_3or4d(
                     axis.set_title(f'$\itlevel$={level}', fontsize=10)
                 else:
                     if mosaic_orientation == 'row' and subplot_titles is not None:
-                        axis.set_title(subplot_titles[j], fontsize=10)
+                        if isinstance(subplot_titles, str):
+                            axis.set_title(subplot_titles, fontsize=10)
+                        elif isinstance(subplot_titles, tuple):
+                            axis.set_title(subplot_titles[j], fontsize=10)
             else:
                 axis = ax[i, j]
                 image = data[i, j]              
@@ -697,7 +704,7 @@ def _plot_mosaic_3or4d(
                 axis.spines["bottom"].set_linewidth(0.1)
 
     if show_colorbar:
-        horizontal_padding += 0.02
+        horizontal_padding += 0.02 * len(data)
     fig.subplots_adjust(wspace=horizontal_padding, hspace=vertical_padding)
 
     if save is not None and isinstance(save, str):
@@ -726,7 +733,7 @@ def _plot_mosaic_2d(
     data_projection=None,
     global_extent=False,
     extent=None,
-    horizontal_padding=0.05,
+    horizontal_padding=0.2,
     subplot_titles=None):
     """
     """
@@ -760,7 +767,10 @@ def _plot_mosaic_2d(
     else:
         extent_known = False
 
-    colorbarzone = 1.4 if show_colorbar else 1 
+    if show_colorbar:
+        colorbarzone = 1.4
+    else:
+        colorbarzone = 1 
     cols = len(tuple_data)
     figsize = (8 * sizexy_ratio * colorbarzone, max(8, cols*2)) 
 
