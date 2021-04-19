@@ -206,7 +206,8 @@ def plot_ndarray(
                 transparent=False, 
                 coastline=coastline, 
                 horizontal_padding=horizontal_padding,
-                subplot_titles=subplot_titles)
+                subplot_titles=subplot_titles,
+                verbose=verbose)
         
         # Plotting a 3D or 4D array
         elif isinstance(data, np.ndarray):  
@@ -250,7 +251,8 @@ def plot_ndarray(
                 mosaic_orientation=mosaic_orientation,
                 horizontal_padding=horizontal_padding,
                 vertical_padding=vertical_padding,
-                subplot_titles=subplot_titles)
+                subplot_titles=subplot_titles,
+                verbose=verbose)
 
         else:
             raise TypeError('`data` must be a 2D/3D/4D ndarray or a tuple of 2D'
@@ -268,7 +270,7 @@ def plot_dataset(
     show_colorbar=True, 
     cmap='viridis', 
     logz=False, 
-    share_dynamic_range=True, 
+    share_dynamic_range=False, 
     vmin=None, 
     vmax=None, 
     wanted_projection=None, 
@@ -375,16 +377,20 @@ def plot_dataset(
         data = data.to_dataset()
 
     ### Selecting the variable 
-    if variable is None: # taking the first 2D, 3D or 4D data variable
+    if variable is None: # taking the first >=2D data variable
         for i in data.data_vars:
             if data.data_vars.__getitem__(i).ndim >= 2:
                 variable = i
+                break
+        if verbose == 1:
+            print(f'The argument `variable` has not been set. Choosing '
+                    f'`{variable}`, the first >=2D variable in `data` \n')
     elif isinstance(variable, int):
         variable = list(data.keys())[variable]
     else: # otherwise it is the variable name as a string
         if not isinstance(variable, str):
             raise ValueError('`variable` must be None, int or str')
-    
+
     ### Getting info
     shape = data.data_vars.__getitem__(variable).shape
     if len(shape) >= 3:
@@ -438,7 +444,7 @@ def plot_dataset(
             tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m') 
             print(f'{_bold("Time interval:")} {tini} --> {tfin}')
             print(f'{_bold("Time interval (sliced array):")} {tini_slice} --> {tfin_slice}\n')
-    if verbose in [2]:
+    if verbose == 2:
         print(data.coords)
         print(data.data_vars, '\n')
     
@@ -507,5 +513,6 @@ def plot_dataset(
             global_extent=global_extent,
             extent=extent,
             horizontal_padding=horizontal_padding,
-            vertical_padding=vertical_padding)
+            vertical_padding=vertical_padding,
+            verbose=verbose)
                 
