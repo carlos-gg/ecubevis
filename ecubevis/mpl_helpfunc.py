@@ -28,7 +28,8 @@ def plot_mosaic_3or4d(
     mosaic_orientation='col',
     horizontal_padding=0.2,
     vertical_padding=0.05,
-    subplot_titles=None):
+    subplot_titles=None,
+    verbose=False):
     """
     
     Ticks with non-rectangular projection supported in Carotpy 0.18
@@ -48,6 +49,7 @@ def plot_mosaic_3or4d(
         sizexy_ratio = data.lon.shape[0] / data.lat.shape[0]
         if data.ndim == 4 and 'level' in data.coords:
             cols = data.level.shape[0]
+            rows = data.time.shape[0]
         elif data.ndim == 3:
             cols = 1
             rows = data.time.shape[0]
@@ -86,16 +88,20 @@ def plot_mosaic_3or4d(
         else:
             extent_known = False
 
+    if show_colorbar:
+        colorbarzone = 1.1
+    else:
+        colorbarzone = 1 
     plot_size_inches = plot_size_px / dpi 
-    
     if mosaic_orientation == 'row' and data.ndim == 3:
         figsize = (plot_size_inches * cols, plot_size_inches / sizexy_ratio)  
     else:
-        figsize = (plot_size_inches * cols, plot_size_inches * rows / sizexy_ratio)
+        figsize = (plot_size_inches * cols * colorbarzone, plot_size_inches * rows / sizexy_ratio)
     
     if wanted_projection is None and extent_known:
         wanted_projection = data_projection
-        print(f'Assuming {wanted_projection} projection')
+        if verbose:
+            print(f'Assuming {wanted_projection} projection')
 
     fig, ax = subplots(rows, cols, sharex='col', sharey='row', dpi=dpi, 
                        figsize=figsize, constrained_layout=False, 
@@ -201,6 +207,8 @@ def plot_mosaic_3or4d(
                 axis.spines["left"].set_linewidth(0.1)
                 axis.spines["top"].set_linewidth(0.1)
                 axis.spines["bottom"].set_linewidth(0.1)
+                if "geo" in axis.spines:
+                    axis.spines["geo"].set_linewidth(0.1)
 
     if show_colorbar:
         horizontal_padding += 0.02 * len(data)
@@ -234,7 +242,8 @@ def plot_mosaic_2d(
     global_extent=False,
     extent=None,
     horizontal_padding=0.2,
-    subplot_titles=None):
+    subplot_titles=None,
+    verbose=False):
     """
     """
     params = dict()
@@ -273,7 +282,8 @@ def plot_mosaic_2d(
 
     if wanted_projection is None and extent_known:
         wanted_projection = data_projection
-        print(f'Assuming {wanted_projection} projection')
+        if verbose:
+            print(f'Assuming {wanted_projection} projection')
 
     fig, ax = subplots(1, cols, sharex='col', dpi=dpi, figsize=figsize, 
                        constrained_layout=False, 
