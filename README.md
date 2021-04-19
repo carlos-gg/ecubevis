@@ -36,20 +36,20 @@ The two main functions in ``ecubevis`` are:
 
 * interactive plots of in-memory 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects. The sliders, thanks to `hvplot`, allow easy exploration of the data as 2D arrays across the time and vertical level dimensions:
 
-![1](./screenshots/ecubevis_1.png | width=300)
+<img src="./screenshots/ecubevis_1.png" width="300">
 
 * static mosaics of in-memory 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects:
 
-![2](./screenshots/ecubevis_2.png | width=300)
+<img src="./screenshots/ecubevis_2.png" width="300">
 
 * interactive plots of in-memory 3D and 4D ``numpy.ndarray`` objects. Composition is possible thanks to ``holowvies``:
 
-![2](./screenshots/ecubevis_3.png | width=300)
+<img src="./screenshots/ecubevis_3.png" width="300">
 
 * static plots of in-memory 2D, 3D and 4D ``numpy.ndarray`` objects:
 
-![2](./screenshots/ecubevis_4.png | width=300)
+<img src="./screenshots/ecubevis_4.png" width="300">
 
 * static plots of a tuple of in-memory 2D ``numpy.ndarray`` objects:
 
-![2](./screenshots/ecubevis_5.png | width=300)
+<img src="./screenshots/ecubevis_5.png" width="300">
