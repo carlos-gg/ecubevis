@@ -34,7 +34,7 @@ The two main functions in ``ecubevis`` are:
 
 `ecubevis` will allow you to create:
 
-* interactive plots of in-memory 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects. The sliders, thanks to `hvplot`, allow easy exploration of the data as 2D arrays across the time and vertical level dimensions:
+* interactive plots of in-memory 2D, 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects. The sliders, thanks to `hvplot`, allow easy exploration of multi-dimensional data as 2D arrays across the time and additional dimensions:
 
 <img src="./screenshots/ecubevis_1.png" width="300">
 
@@ -42,7 +42,7 @@ The two main functions in ``ecubevis`` are:
 
 <img src="./screenshots/ecubevis_2.png" width="300">
 
-* interactive plots of in-memory 3D and 4D ``numpy.ndarray`` objects. Composition is possible thanks to ``holowvies``:
+* interactive plots of in-memory 2D, 3D and 4D ``numpy.ndarray`` objects. Composition is possible thanks to ``holowvies``:
 
 <img src="./screenshots/ecubevis_3.png" width="300">
 
