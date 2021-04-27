@@ -196,7 +196,7 @@ def plot_mosaic_3or4d(
                                   format=None) #format='%1.2e'
                 cb.outline.set_linewidth(0.1)
                 cb.ax.tick_params(labelsize=8)
-                if use_xarray:
+                if use_xarray and hasattr(data, 'units'):
                     cb.set_label(f'{data.name} [{data.units}]', rotation=90, 
                                  labelpad=10)
 
