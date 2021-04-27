@@ -5,7 +5,7 @@ import xarray as xr
 import hvplot.xarray 
 import cartopy.crs as crs
 import holoviews as hv
-from matplotlib import cm
+from matplotlib import cm, interactive
 
 from .io import load_transform_mfdataset
 from .utils import check_coords, slice_dataset
@@ -14,20 +14,27 @@ from .mpl_helpfunc import plot_mosaic_2d, plot_mosaic_3or4d
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+interactive_session = False
 
 __all__ = ['plot_dataset',
            'plot_ndarray',
            'cm', 
-           'crs']
+           'crs',
+           'set_interactive']
 
 
 def _bold(string):
    return '\033[1m' + string + '\033[0m'
 
 
+def set_interactive(state=True):
+    global interactive_session
+    interactive_session = state
+
+
 def plot_ndarray(
     data, 
-    interactive=False, 
+    interactive=None, 
     multichannel4d=False,
     show_colorbar=True, 
     share_colorbar=False,
@@ -38,6 +45,7 @@ def plot_ndarray(
     vmax=None, 
     dpi=100,
     plot_size_px=500,
+    dynamic=True,
     coastline=False,
     horizontal_padding=0.2,
     vertical_padding=0.1,
@@ -100,16 +108,31 @@ def plot_ndarray(
     Holoviews object when interactive=True, or None when interactive=False. In
     both cases the plot is shown on Jupyterlab.
     """
+    if interactive is None:
+        interactive = True if interactive_session else False
+
+    if isinstance(data, np.ndarray):
+        data = np.squeeze(data)  # removing axes/dims of lenght one
+
+    params1 = dict()
     if interactive:
         hv.extension('bokeh') # matplotlib is another option
         if isinstance(data, tuple):
             msg = '`data` is a tuple. This is supported only when `interactive=False`'
             raise ValueError(msg)
+        elif isinstance(data, np.ndarray) and data.ndim == 2:
+            # Dataset((X, Y), Data)
+            # X and Y are 1D arrays of shape M and N
+            # Data is a ND array of shape NxM
+            ds = hv.Dataset((range(data.shape[1]), range(data.shape[0]), data), 
+                             ['x', 'y'], 'values')
+            max_frames = 1
+            sizexy_ratio = data.shape[1] / data.shape[0]
         elif isinstance(data, np.ndarray) and data.ndim == 3:
-            # Dataset((X, Y, Z), Data), where
-            # X is a 1D array of shape M ,
-            # Y is a 1D array of shape N and
-            # Z is a 1D array of shape O
+            params1['dynamic'] = dynamic
+            # Dataset((X, Y, TIME), Data)
+            # X and Y are 1D arrays of shape M and N
+            # TIME is a 1D array of shape O
             # Data is a ND array of shape NxMxO
             ds = hv.Dataset((range(data.shape[2]), range(data.shape[1]),
                              range(data.shape[0]), data), 
@@ -117,6 +140,7 @@ def plot_ndarray(
             max_frames = data.shape[0]
             sizexy_ratio = data.shape[2] / data.shape[1]
         elif isinstance(data, np.ndarray) and data.ndim == 4:
+            params1['dynamic'] = dynamic
             if multichannel4d:
                 # adding a channel dimension
                 ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
@@ -139,12 +163,12 @@ def plot_ndarray(
         if vmax == 'max':
             vmax = data.max()
         
-        params = dict()
+        params2 = dict()
         # not needed in recent version of holoviews (can take clim=None)
         if vmin is not None and vmax is not None:
-            params['clim'] = (vmin, vmax)
+            params2['clim'] = (vmin, vmax)
 
-        image_stack = ds.to(hv.Image, kdims=['x', 'y'], dynamic=True)
+        image_stack = ds.to(hv.Image, kdims=['x', 'y'], **params1)
         hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames, widget_location='top')
         hv_cm = cmap if isinstance(cmap, str) else cmap.name        
         width = plot_size_px
@@ -162,21 +186,17 @@ def plot_ndarray(
             elif tick_len > 4:
                 cb_tick = 45
             width += cb_pad + cb_wid + cb_tick
+            params2['colorbar_opts'] = {'width': cb_wid, 'padding': cb_pad}
 
         return image_stack.opts(hv.opts.Image(cmap=hv_cm,
                                               colorbar=show_colorbar,
-                                              colorbar_opts={'width': 15,
-                                                             'padding': 5},
                                               width=width, 
                                               height=height,
                                               tools=['hover'],
-                                              **params)) 
+                                              **params2)) 
 
     # Non-interactive (static) matplotlib plot
     else:
-        if isinstance(data, np.ndarray):
-            data = np.squeeze(data)  # removing axes/dims of lenght one
-
         # Plotting a single 2D ndarray or a tuple of 2D arrays
         if (isinstance(data, np.ndarray) and data.ndim == 2) or isinstance(data, tuple):
             if isinstance(data, np.ndarray) and data.ndim == 2:
@@ -219,7 +239,7 @@ def plot_ndarray(
                     data = data[:max_static_subplot_rows]
                 mosaic_orientation = 'row'
             # max static subplots, assuming [time, level, lat, lon]
-            if data.ndim == 4:
+            elif data.ndim == 4:
                 if verbose:
                     print('Plotting a single 4D np.ndarray')
                 if data.shape[0] > max_static_subplot_rows:
@@ -227,6 +247,9 @@ def plot_ndarray(
                 if data.shape[1] > max_static_subplot_cols:
                     data = data[:, :max_static_subplot_cols]
                 mosaic_orientation = 'col'
+            else:
+                raise TypeError('`data` must be a 2D/3D/4D ndarray or a tuple '
+                            ' of 2D ndarrays when interactive=False')
 
             if share_dynamic_range:
                 if vmin is None:
@@ -261,7 +284,7 @@ def plot_ndarray(
 
 def plot_dataset(
     data, 
-    interactive=True, 
+    interactive=None, 
     variable=None, 
     slice_time=None, 
     slice_level=None, 
@@ -364,6 +387,9 @@ def plot_dataset(
     https://pyviz-dev.github.io/holoviz/tutorial/Composing_Plots.html
 
     """     
+    if interactive is None:
+        interactive = True if interactive_session else False
+
     if isinstance(data, str):
         if not data.endswith('.nc'):
             data += '.nc'
