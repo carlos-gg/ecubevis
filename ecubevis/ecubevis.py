@@ -32,6 +32,27 @@ def set_interactive(state=True):
     interactive_session = state
 
 
+def plot(data, **kwargs):
+    """
+    Plot a 2D, 3D or 4D ``numpy`` array or a tuple of 2D ``numpy`` arrays, or 
+    a 2D, 3D or 4D ``xarray`` Dataset/DataArray.
+
+    Parameters
+    ----------
+    data : numpy ndarray or tuple or xarray Dataset/Dataarray 
+        2D, 3D or 4D ``numpy`` ndarray or a tuple of 2D ``numpy`` ndarrays, or
+        Xarray object with dimensions: [lat, lon], [time, lat, lon] 
+        or [time, level, lat, lon].
+    **kwargs : dict
+        Arguments passed to the ``plot_ndarray`` or ``plot_dataset`` functions.
+    """
+    if isinstance(data, np.ndarray):
+        f = plot_ndarray
+    elif isinstance(data, (xr.Dataset, xr.DataArray)):
+        f = plot_dataset
+    return f(data, **kwargs)
+
+
 def plot_ndarray(
     data, 
     interactive=None, 
@@ -311,16 +332,15 @@ def plot_dataset(
     vertical_padding=0.15,
     verbose=True):
     """
-    Plot an n-dimensional dataset (in-memory or from a path). The dataset is 
-    loaded through ``xarray`` and therefore supports formats such as NetCDF, 
-    IRIS or GRIB.
+    Plot a 2D, 3D or 4D ``xarray`` Dataset/DataArray (e.g., NetCDF, IRIS or 
+    GRIB file loaded in-memory). 
 
     Parameters
     ----------
-    data : xarray Dataset/Dataarray or str
-        Xarray (in memory) object or string with the path to the corresponding 
-        NetCDF/IRIS/GRIB file. Expected dimensions: 2D [lat, lon], 3D array 
-        [time, lat, lon] or 4D array [time, level, lat, lon].
+    data : xarray Dataset/Dataarray 
+        In-memory Xarray object corresponding to a NetCDF/IRIS/GRIB file on disk. 
+        Expected dimensions: 2D [lat, lon], 3D array [time, lat, lon] or 4D 
+        array [time, level, lat, lon].
     interactive : bool optional
         Whether to display an interactive plot (using ``hvplot``) with a 
         slider across the dimension set by ``groupby`` or an static mosaic 
@@ -389,12 +409,6 @@ def plot_dataset(
     """     
     if interactive is None:
         interactive = True if interactive_session else False
-
-    if isinstance(data, str):
-        if not data.endswith('.nc'):
-            data += '.nc'
-        data = xr.open_dataset(data, engine="netcdf4", decode_times=True, 
-                               chunks={'time': 1}) 
     
     if not isinstance(data, (xr.Dataset, xr.DataArray)):
         raise TypeError('`data` must be an Xarray Dataset/Dataarray')  
@@ -454,22 +468,23 @@ def plot_dataset(
         raise TypeError('Variable is neither 2D, 3D nor 4D')
  
     if verbose in [1, 2]:
-        shape_slice = var_array.shape
         if hasattr(var_array, 'long_name'):
-            print(f'{_bold("Name")} {variable}, {var_array.long_name}')
+            print(f'{_bold("Name:")} {variable}, {var_array.long_name}')
         else:
-            print(f'{_bold("Name")} {variable}')
+            print(f'{_bold("Name:")} {variable}')
         if hasattr(var_array, 'units'):
             print(f'{_bold("Units:")} {var_array.units}') 
         print(f'{_bold("Dimensionality:")} {dimp}') 
         print(f'{_bold("Shape:")} {shape}')
-        print(f'{_bold("Shape (sliced array):")} {shape_slice}')
+        if slice_lat is not None or slice_lon is not None or slice_time is not None or slice_level is not None:
+            print(f'{_bold("Shape (sliced array):")} {var_array.shape}')
         if dimp == '3D' or dimp == '4D':
             # assuming the min temporal sampling unit is minutes
             tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
             tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m') 
             print(f'{_bold("Time interval:")} {tini} --> {tfin}')
-            print(f'{_bold("Time interval (sliced array):")} {tini_slice} --> {tfin_slice}\n')
+            if slice_time is not None:
+                print(f'{_bold("Time interval (sliced array):")} {tini_slice} --> {tfin_slice}\n')
     if verbose == 2:
         print(data.coords)
         print(data.data_vars, '\n')
