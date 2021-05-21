@@ -5,21 +5,24 @@ __all__ = ['slice_dataset',
            'fix_latitude']
 
 
-def fix_longitude(data):
+def fix_longitude(data, dim_name='lon'):
     """ 
     If the data central longitude is 180º (0º to 360º) then we set it to 0º 
     (-180º to 180º)
     """
-    data.coords['lon'] = (data.coords['lon'] + 180) % 360 - 180
+    data.coords[dim_name] = (data.coords[dim_name] + 180) % 360 - 180
     data = data.sortby(data.lon)
     return data
 
 
-def fix_latitude(data):
+def fix_latitude(data, dim_name='lat'):
     """
     Reverse along latitude, 90º to -90º -> -90º to 90º
     """
-    return data.reindex(lat=data.lat[::-1])
+    if dim_name == 'lat':
+        return data.reindex(lat=data.coords[dim_name][::-1])
+    elif dim_name == 'latitude':
+        return data.reindex(latitude=data.coords[dim_name][::-1])
 
 
 def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None, 
