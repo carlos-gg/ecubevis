@@ -47,7 +47,7 @@ def plot(data, **kwargs):
     **kwargs : dict
         Arguments passed to the ``plot_ndarray`` or ``plot_dataset`` functions.
     """
-    if isinstance(data, np.ndarray):
+    if isinstance(data, (np.ndarray, tuple)):
         f = plot_ndarray
     elif isinstance(data, (xr.Dataset, xr.DataArray)):
         f = plot_dataset

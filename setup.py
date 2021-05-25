@@ -41,7 +41,7 @@ setup(
         'numpy ~= 1.18',
         'matplotlib >= 2.2',
         'xarray ~= 0.15.1',
-        'hvplot ~= 0.5.2',
+        'hvplot ~= 0.7.2',
         'holoviews ~= 1.13.2',
         'cartopy',
         'geoviews',
