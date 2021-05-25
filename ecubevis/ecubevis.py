@@ -16,7 +16,8 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 interactive_session = False
 
-__all__ = ['plot_dataset',
+__all__ = ['plot',
+           'plot_dataset',
            'plot_ndarray',
            'cm', 
            'crs',
