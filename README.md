@@ -24,32 +24,21 @@ Import the library:
 import ecubevis as ecv
 ```
 
-The two main functions in ``ecubevis`` are: 
+The main function in ``ecubevis`` is ``ecv.plot()``. Under the hood, it calls one of the following functions depending on the data type: 
 
-* ``ecv.plot_ndarray``: For plotting an in-memory ``numpy.ndarray`` object with 2, 3 or 4 dimensions (ndarrays do not carry metadata so the dimensions are implicit). The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays. Additionally, ``plot_ndarray`` can take a tuple of 2D ndarrays, even with different grid/image size.
+* ``ecv.plot_ndarray()``: For plotting an in-memory ``numpy.ndarray`` object with 2, 3 or 4 dimensions (ndarrays do not carry metadata so the dimensions are implicit). The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays. Additionally, ``plot_ndarray`` can take a tuple of 2D ndarrays, even with different grid/image size.
 
-* ``ecv.plot_dataset``: For plotting an in-memory ``xr.Dataset`` or ``xr.DataArray`` objects with 2, 3, or 4 dimensions. The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays.  
+* ``ecv.plot_dataset()``: For plotting an in-memory ``xr.Dataset`` or ``xr.DataArray`` objects with 2, 3, or 4 dimensions. The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays.  
 
-## Screenshots
+### Examples
 
-`ecubevis` will allow you to create:
+``ecubevis`` will allow you to create:
 
-* interactive plots of in-memory 2D, 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects. The sliders, thanks to `hvplot`, allow easy exploration of multi-dimensional data as 2D arrays across the time and additional dimensions:
-
-<img src="./screenshots/ecubevis_1.png" width="300">
-
-* static mosaics of in-memory 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects:
-
-<img src="./screenshots/ecubevis_2.png" width="300">
-
-* interactive plots of in-memory 2D, 3D and 4D ``numpy.ndarray`` objects. Composition is possible thanks to ``holowvies``:
-
-<img src="./screenshots/ecubevis_3.png" width="300">
-
-* static plots of in-memory 2D, 3D and 4D ``numpy.ndarray`` objects:
-
-<img src="./screenshots/ecubevis_4.png" width="300">
-
-* static plots of a tuple of in-memory 2D ``numpy.ndarray`` objects:
-
-<img src="./screenshots/ecubevis_5.png" width="300">
+| Interactive | Static |
+| ----------- | -------|
+| plots of in-memory 2D, 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects. The sliders, thanks to `hvplot`, allow easy exploration of multi-dimensional data as 2D arrays across the time and additional dimensions: <img src="./screenshots/ecubevis_1.png" width="300"> | mosaics of in-memory 3D and 4D ``xr.Dataset`` or ``xr.DataArray`` objects: <img src="./screenshots/ecubevis_2.png" width="300"> |
+| --- | --- | 
+| plots of in-memory 2D, 3D and 4D ``numpy.ndarray`` objects. Composition is possible thanks to ``holoviews``: <img src="./screenshots/ecubevis_3.png" width="300"> | plots of in-memory 2D, 3D and 4D ``numpy.ndarray`` objects: 
+<img src="./screenshots/ecubevis_4.png" width="300"> |
+| --- | --- |
+| plots of in-memory ``xr.Dataset`` or ``xr.DataArray`` while sub-setting across dimensions: <img src="./screenshots/ecubevis_6.png" width="300"> | plots of a tuple of in-memory 2D ``numpy.ndarray`` objects: <img src="./screenshots/ecubevis_5.png" width="300"> |
