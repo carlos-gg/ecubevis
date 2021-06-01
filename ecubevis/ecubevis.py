@@ -74,6 +74,7 @@ def plot_ndarray(
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
     subplot_titles=None,
+    plot_title=None,
     save=None,
     verbose=False, 
     ):
@@ -249,6 +250,7 @@ def plot_ndarray(
                 coastline=coastline, 
                 horizontal_padding=horizontal_padding,
                 subplot_titles=subplot_titles,
+                plot_title=plot_title,
                 verbose=verbose)
         
         # Plotting a 3D or 4D array
@@ -297,6 +299,7 @@ def plot_ndarray(
                 horizontal_padding=horizontal_padding,
                 vertical_padding=vertical_padding,
                 subplot_titles=subplot_titles,
+                plot_title=plot_title,
                 verbose=verbose)
 
         else:

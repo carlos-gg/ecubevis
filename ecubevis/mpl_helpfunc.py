@@ -29,6 +29,7 @@ def plot_mosaic_3or4d(
     horizontal_padding=0.2,
     vertical_padding=0.05,
     subplot_titles=None,
+    plot_title=None,
     verbose=False):
     """
     
@@ -109,6 +110,7 @@ def plot_mosaic_3or4d(
 
     data = np.squeeze(data)
     for i in range(rows):
+        fig.suptitle(plot_title)
         for j in range(cols):
             if cols == 1:
                 if rows == 1:
@@ -190,7 +192,7 @@ def plot_mosaic_3or4d(
             if show_colorbar:
                 divider = make_axes_locatable(axis)
                 # the width of cax is 2% of axis and the padding is 0.1 inch
-                cax = divider.append_axes("right", size="2%", pad=0.1, 
+                cax = divider.append_axes("right", size="5%", pad=0.1, 
                                           axes_class=Axes)
                 cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
                                   format=None) #format='%1.2e'
@@ -243,6 +245,7 @@ def plot_mosaic_2d(
     extent=None,
     horizontal_padding=0.2,
     subplot_titles=None,
+    plot_title=None,
     verbose=False):
     """
     """
@@ -260,6 +263,11 @@ def plot_mosaic_2d(
         if (vmin is None or vmax is None) and not share_dynamic_range:
             raise ValueError('When `share_colorbar=True`, `vmin` and `vmax` '
                              'must be given or `share_dynamic_range=True`')
+
+    if len(tuple_data) > 1 and subplot_titles is not None:
+        if len(tuple_data) != subplot_titles or not isinstance(subplot_titles, tuple):
+            raise ValueError('`subplot_titles` must be a tuple with length '
+                            'equal to that of `data`')
 
     if share_dynamic_range:
         minvals = [im.min() for im in tuple_data]
@@ -291,6 +299,7 @@ def plot_mosaic_2d(
 
     for j in range(cols):
         image = tuple_data[j]
+        fig.suptitle(plot_title)
         if cols == 1:
             axis = ax
             if subplot_titles is not None:
@@ -347,7 +356,7 @@ def plot_mosaic_2d(
             if not share_colorbar:
                 divider = make_axes_locatable(axis)
                 # the width of cax is 2% of axis and the padding is 0.1 inch
-                cax = divider.append_axes("right", size="2%", pad=0.1, 
+                cax = divider.append_axes("right", size="5%", pad=0.1, 
                                           axes_class=Axes)
                 cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
                                   format=None) #format='%1.2e'
@@ -355,12 +364,14 @@ def plot_mosaic_2d(
                 cb.ax.tick_params(labelsize=8)
             else:
                 if j+1 == cols:
-                    fig.subplots_adjust(right=0.8)
+                    fig.subplots_adjust(right=0.98)
                     axpos = axis.get_position()
-                    cbar_pad = axpos.width * cols * 0.01 
-                    cbar_width = axpos.width * cols * 0.02
+                    cbar_pad = axpos.width * 0.1
+                    cbar_width = axpos.width * 0.1
                     cax = fig.add_axes([axpos.x0 + axpos.width + cbar_pad, 
-                                        axpos.y0, cbar_width, axpos.height])
+                                        axpos.y0, 
+                                        cbar_width, 
+                                        axpos.height])
                     cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
                                       format=None) #format='%1.2e'
                     cb.outline.set_linewidth(0.1)
