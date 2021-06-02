@@ -1,4 +1,4 @@
-from matplotlib.pyplot import show, savefig, close, subplots, Axes
+from matplotlib.pyplot import plot, show, savefig, close, subplots, Axes
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from cartopy.mpl.geoaxes import GeoAxes
@@ -256,6 +256,10 @@ def plot_mosaic_2d(
             tuple_data.append(np.squeeze(data[i]))
     elif isinstance(data, np.ndarray) and data.ndim == 2:
         tuple_data = [data]
+        # 2D ndarrays, plot title to set_title when not subtitle is given
+        if plot_title is not None and subplot_titles is None:
+            subplot_titles = plot_title
+            plot_title = None
     else:
         raise TypeError('`data` must be a single 2D array or tuple of 2D arrays')
     
