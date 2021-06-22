@@ -251,11 +251,11 @@ def plot_mosaic_2d(
     """
     params = dict()
     if isinstance(data, tuple):
-        tuple_data = []
+        list_data = []
         for i in range(len(data)):
-            tuple_data.append(np.squeeze(data[i]))
+            list_data.append(np.squeeze(data[i]))
     elif isinstance(data, np.ndarray) and data.ndim == 2:
-        tuple_data = [data]
+        list_data = [data]
         # 2D ndarrays, plot title to set_title when not subtitle is given
         if plot_title is not None and subplot_titles is None:
             subplot_titles = plot_title
@@ -268,18 +268,18 @@ def plot_mosaic_2d(
             raise ValueError('When `share_colorbar=True`, `vmin` and `vmax` '
                              'must be given or `share_dynamic_range=True`')
 
-    if len(tuple_data) > 1 and subplot_titles is not None:
-        if len(tuple_data) != subplot_titles or not isinstance(subplot_titles, tuple):
+    if len(list_data) > 1 and subplot_titles is not None:
+        if len(list_data) != len(subplot_titles) or not isinstance(subplot_titles, tuple):
             raise ValueError('`subplot_titles` must be a tuple with length '
                             'equal to that of `data`')
 
     if share_dynamic_range:
-        minvals = [im.min() for im in tuple_data]
+        minvals = [im.min() for im in list_data]
         vmin = np.min(minvals)
-        maxvals = [im.max() for im in tuple_data]
+        maxvals = [im.max() for im in list_data]
         vmax = np.max(maxvals)
 
-    first2d = tuple_data[0]
+    first2d = list_data[0]
     sizexy_ratio = first2d.shape[1] / first2d.shape[0]
 
     if extent is not None:
@@ -288,7 +288,7 @@ def plot_mosaic_2d(
     else:
         extent_known = False
 
-    cols = len(tuple_data)
+    cols = len(list_data)
     plot_size_inches = plot_size_px / dpi 
     figsize = (plot_size_inches * cols, plot_size_inches / sizexy_ratio) 
 
@@ -302,7 +302,7 @@ def plot_mosaic_2d(
                        subplot_kw={'projection': wanted_projection})
 
     for j in range(cols):
-        image = tuple_data[j]
+        image = list_data[j]
         fig.suptitle(plot_title)
         if cols == 1:
             axis = ax
