@@ -26,7 +26,7 @@ def fix_latitude(data, dim_name='lat'):
 
 
 def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None, 
-                  slice_lon=None):
+                  slice_lon=None, drop_dates=False):
     """  
     Slice an N-dimensional ``xarray`` Dataset across its dimensions (time, level,
     lat or lon, if present). This function is able to wrap selection assuming 
@@ -48,6 +48,9 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
     slice_lon : tuple of int or None, optional
         Tuple with initial and final values for slicing the lon dimension. If 
         None, the array is not sliced accross this dimension.
+    drop_dates : bool, optional
+        If True the time interval in ``slice_time`` will be removed. The default
+        is False, meaning that the time interval is selected.
 
     Returns
     -------
@@ -68,9 +71,15 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
 
     if slice_time is not None and 'time' in data.coords:
         if isinstance(slice_time, tuple) and isinstance(slice_time[0], str):
-            data = data.sel(time=slice(*slice_time))
+            if drop_dates:
+                data = data.sel(time=~((data.time.astype(str) >= slice_time[0]) & (data.time.astype(str) <= slice_time[1])))
+            else:
+                data = data.sel(time=slice(*slice_time))
         elif isinstance(slice_time, tuple) and isinstance(slice_time[0], int):
-            data = data.isel(time=slice(*slice_time))
+            if drop_dates:
+                data = data.drop_isel(time=list(range(slice_time[0], slice_time[1])))
+            else:
+                data = data.isel(time=slice(*slice_time))
     
     if slice_level is not None and 'level' in data.coords:
         data = data.isel(level=slice(*slice_level))
