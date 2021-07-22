@@ -14,7 +14,11 @@ from .mpl_helpfunc import plot_mosaic_2d, plot_mosaic_3or4d
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-interactive_session = False
+INTERACTIVE_SESSION = True
+DIMS2D = ('lat', 'lon')
+DIMS3D = ('time', 'lat', 'lon')
+DIMS4D = ('time', 'dim', 'lat', 'lon')
+DIMS5D = ('time', 'dim', 'lat', 'lon', 'channel')
 
 __all__ = ['plot',
            'plot_dataset',
@@ -25,13 +29,29 @@ __all__ = ['plot',
 
 
 def _bold(string):
-   return '\033[1m' + string + '\033[0m'
+    return '\033[1m' + string + '\033[0m'
 
 
 def set_interactive(state=True):
-    global interactive_session
-    interactive_session = state
+    global INTERACTIVE_SESSION
+    INTERACTIVE_SESSION = state
 
+
+def _get_maxframes(data, dimensions):
+    maxframes = 1
+    for i, dim in enumerate(dimensions):
+        if dim not in ['lat', 'lon']:
+            maxframes *= data.shape[i]
+    return maxframes
+
+def _get_xy_ratio(data, dimensions):
+    for i, dim in enumerate(dimensions):
+        if dim == 'lat':
+            y = i
+        elif dim == 'lon':
+            x = i
+    return data.shape[x] / data.shape[y]
+    
 
 def plot(data, **kwargs):
     """
@@ -57,7 +77,7 @@ def plot(data, **kwargs):
 def plot_ndarray(
     data, 
     interactive=None, 
-    multichannel4d=False,
+    dimensions=None,
     show_colorbar=True, 
     share_colorbar=False,
     show_axis=True, 
@@ -79,22 +99,19 @@ def plot_ndarray(
     verbose=False, 
     ):
     """
-    Plot a 2D, 3D or 4D ``numpy`` array or a tuple of 2D ``numpy`` arrays. 
+    Plot a 2D, 3D, 4D or 5D ``numpy`` array or a tuple of 2D ``numpy`` arrays. 
     
     Parameters
     ----------
     data : numpy ndarray or tuple 
-        2D, 3D or 4D ``numpy`` ndarray or a tuple of 2D ``numpy`` ndarrays. 
+        2D, 3D, 4D or 5D ``numpy`` ndarray or a tuple of 2D ``numpy`` ndarrays. 
     interactive : bool, optional
         Whether to display an interactive (with ``bokeh``) or static (with
         ``matplotlib``) plot. In the case of a 3D ndarray, a slider will be used 
         to explore the data across time and/or vertical levels.
-    multichannel4d : bool, optional
-        If True, the dimensions of a 4D array are assumed [time, y, x, channels]
-        which is useful for visualizing sequences of images with multiple 
-        channels or variables. By default the order of the dimensions expected 
-        in a 4D array are [time, z, y, x] to match the dimensions of ndarrays 
-        contained in 4D xr.Datasets [time, level, lat, lon]. 
+    dimensions : tuple or Nonr, optional
+        The dimensions of the numpy array. Used when ``interactive`` is True. If
+        None then the global variables DIMS2D, DIMS3D, DIMS4D or DIMS5D are used.
     colorbar : bool optional
         Whether to show the colorbar.
     show_axis : bool optional
@@ -132,54 +149,60 @@ def plot_ndarray(
     both cases the plot is shown on Jupyterlab.
     """
     if interactive is None:
-        interactive = True if interactive_session else False
+        interactive = True if INTERACTIVE_SESSION else False
 
     if isinstance(data, np.ndarray):
         data = np.squeeze(data)  # removing axes/dims of lenght one
 
     params1 = dict()
     if interactive:
-        hv.extension('bokeh') # matplotlib is another option
+        hv.extension('bokeh')  # matplotlib could be used instead
         if isinstance(data, tuple):
             msg = '`data` is a tuple. This is supported only when `interactive=False`'
             raise ValueError(msg)
-        elif isinstance(data, np.ndarray) and data.ndim == 2:
-            # Dataset((X, Y), Data)
-            # X and Y are 1D arrays of shape M and N
-            # Data is a ND array of shape NxM
-            ds = hv.Dataset((range(data.shape[1]), range(data.shape[0]), data), 
-                             ['x', 'y'], 'values')
-            max_frames = 1
-            sizexy_ratio = data.shape[1] / data.shape[0]
-        elif isinstance(data, np.ndarray) and data.ndim == 3:
-            params1['dynamic'] = dynamic
-            # Dataset((X, Y, TIME), Data)
-            # X and Y are 1D arrays of shape M and N
-            # TIME is a 1D array of shape O
-            # Data is a ND array of shape NxMxO
-            ds = hv.Dataset((range(data.shape[2]), range(data.shape[1]),
-                             range(data.shape[0]), data), 
-                             ['x', 'y', 'time'], 'values')
-            max_frames = data.shape[0]
-            sizexy_ratio = data.shape[2] / data.shape[1]
-        elif isinstance(data, np.ndarray) and data.ndim == 4:
-            params1['dynamic'] = dynamic
-            if multichannel4d:
-                # adding a channel dimension
-                ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
+        elif isinstance(data, np.ndarray):
+            if data.ndim == 2:
+                if dimensions is None:
+                    dimensions = list(DIMS2D)
+                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                sizexy_ratio = _get_xy_ratio(data, dimensions)
+                max_frames = 1
+                # Dataset((X, Y), Data)
+                # X and Y are 1D arrays of shape M and N
+                # Data is a ND array of shape NxM
+                ds = hv.Dataset((range(data.shape[2]), range(data.shape[1]), data), 
+                                dimensions[::-1] , 'values')
+            elif data.ndim == 3:
+                if dimensions is None:
+                    dimensions = list(DIMS3D)
+                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                max_frames = _get_maxframes(data, dimensions)
+                sizexy_ratio = _get_xy_ratio(data, dimensions)
+                params1['dynamic'] = dynamic
+                ds = hv.Dataset((range(data.shape[2]), range(data.shape[1]), range(data.shape[0]), 
+                                 data), dimensions[::-1] , 'values')
+            elif data.ndim == 4:
+                if dimensions is None:
+                    dimensions = list(DIMS4D)
+                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                max_frames = _get_maxframes(data, dimensions)
+                sizexy_ratio = _get_xy_ratio(data, dimensions)
+                params1['dynamic'] = dynamic
+                ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]), range(data.shape[1]), 
+                                 range(data.shape[0]), data),
+                                dimensions[::-1] , 'values')
+            elif data.ndim == 5:
+                if dimensions is None:
+                    dimensions = list(DIMS5D)
+                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                max_frames = _get_maxframes(data, dimensions)
+                sizexy_ratio = _get_xy_ratio(data, dimensions)
+                params1['dynamic'] = dynamic
+                ds = hv.Dataset((range(data.shape[4]), range(data.shape[3]), range(data.shape[2]), 
                                  range(data.shape[1]), range(data.shape[0]), data),
-                                ['channels', 'x', 'y', 'time'], 'values')
-                max_frames = data.shape[0] * data.shape[3]
-                sizexy_ratio = data.shape[2] / data.shape[1]
-            else:
-                # adding a level dimension
-                ds = hv.Dataset((range(data.shape[3]), range(data.shape[2]),
-                                 range(data.shape[1]), range(data.shape[0]), data),
-                                ['x', 'y', 'level', 'time'], 'values')
-                max_frames = data.shape[0] * data.shape[1]
-                sizexy_ratio = data.shape[3] / data.shape[2]
+                                dimensions[::-1] , 'values')
         else:
-            raise TypeError('`data` must be 3D or 4D when interactive=True')
+            raise TypeError('`data` must be 2D/3D/4D/5D ndarray when interactive=True')
 
         if vmin == 'min':
             vmin = data.min()
@@ -191,7 +214,7 @@ def plot_ndarray(
         if vmin is not None and vmax is not None:
             params2['clim'] = (vmin, vmax)
 
-        image_stack = ds.to(hv.Image, kdims=['x', 'y'], **params1)
+        image_stack = ds.to(hv.Image, kdims=['lon', 'lat'], **params1)
         hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames, widget_location='top')
         hv_cm = cmap if isinstance(cmap, str) else cmap.name        
         width = plot_size_px
@@ -305,7 +328,7 @@ def plot_ndarray(
         else:
             raise TypeError('`data` must be a 2D/3D/4D ndarray or a tuple of 2D'
                             ' ndarrays when interactive=False')           
-
+        
 
 def plot_dataset(
     data, 
@@ -412,7 +435,7 @@ def plot_dataset(
 
     """     
     if interactive is None:
-        interactive = True if interactive_session else False
+        interactive = True if INTERACTIVE_SESSION else False
     
     if not isinstance(data, (xr.Dataset, xr.DataArray)):
         raise TypeError('`data` must be an Xarray Dataset/Dataarray')  

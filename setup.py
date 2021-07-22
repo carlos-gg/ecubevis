@@ -49,7 +49,7 @@ setup(
         'pyviz_comms ~= 0.7.6'
         ],
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
         #'Operating System :: MacOS :: MacOS X',
         'Operating System :: POSIX :: Linux',
