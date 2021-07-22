@@ -1,6 +1,6 @@
 # Welcome to the repository of ecubevis
 
-`ecubevis`: Earth CUBE VISualization with Python. Intended for the interactive exploration of n-dimensional (2D, 3D or 4D spatio-temporal) arrays on Jupyterlab. Supports both ``xarray.Dataset/DataArray`` (with metadata) or ``numpy.ndarray`` objects. 
+`ecubevis`: Earth CUBE VISualization with Python. Intended for the interactive exploration of n-dimensional (2D, 3D, 4D or 5D spatio-temporal) arrays on Jupyterlab. Supports both ``xarray.Dataset/DataArray`` (with metadata) or ``numpy.ndarray`` objects. 
 
 ## For BSC-ES users
 
@@ -26,7 +26,7 @@ import ecubevis as ecv
 
 The main function in ``ecubevis`` is ``ecv.plot()``. In interactive mode, the plot comes with sliders (thanks to `hvplot`/`holoviews`) allowing easy exploration of multi-dimensional data as 2D arrays across the time and additional dimensions. Under the hood, ``ecv.plot()`` calls one of the following functions depending on the data type: 
 
-* ``ecv.plot_ndarray()``: For plotting an in-memory ``numpy.ndarray`` object with 2, 3 or 4 dimensions (ndarrays do not carry metadata so the dimensions are implicit). The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays. Additionally, ``plot_ndarray`` can take a tuple of 2D ndarrays, even with different grid/image size.
+* ``ecv.plot_ndarray()``: For plotting an in-memory ``numpy.ndarray`` object with 2, 3, 4 or 5 dimensions (ndarrays do not carry metadata so the dimensions are given with the ``dimensions`` argument). The function can take a tuple of 2D ndarrays, even with different grid/image size.
 
 * ``ecv.plot_dataset()``: For plotting an in-memory ``xr.Dataset`` or ``xr.DataArray`` objects with 2, 3, or 4 dimensions. The dimensions expected are [lat, lon] for 2D arrays, [time, lat, lon] for 3D arrays or [time, level, lat, lon] for 4D arrays.  
 
