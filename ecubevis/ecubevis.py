@@ -170,7 +170,7 @@ def plot_ndarray(
                 # Dataset((X, Y), Data)
                 # X and Y are 1D arrays of shape M and N
                 # Data is a ND array of shape NxM
-                ds = hv.Dataset((range(data.shape[2]), range(data.shape[1]), data), 
+                ds = hv.Dataset((range(data.shape[1]), range(data.shape[0]), data), 
                                 dimensions[::-1] , 'values')
             elif data.ndim == 3:
                 if dimensions is None:
