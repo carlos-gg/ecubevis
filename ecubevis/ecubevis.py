@@ -164,7 +164,8 @@ def plot_ndarray(
             if data.ndim == 2:
                 if dimensions is None:
                     dimensions = list(DIMS2D)
-                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                    if verbose:
+                        print(f'`dimensions` is None, assuming `data` has {dimensions}')
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 max_frames = 1
                 # Dataset((X, Y), Data)
@@ -175,7 +176,8 @@ def plot_ndarray(
             elif data.ndim == 3:
                 if dimensions is None:
                     dimensions = list(DIMS3D)
-                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                    if verbose:
+                        print(f'`dimensions` is None, assuming `data` has {dimensions}')
                 max_frames = _get_maxframes(data, dimensions)
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 params1['dynamic'] = dynamic
@@ -184,7 +186,8 @@ def plot_ndarray(
             elif data.ndim == 4:
                 if dimensions is None:
                     dimensions = list(DIMS4D)
-                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                    if verbose:
+                        print(f'`dimensions` is None, assuming `data` has {dimensions}')
                 max_frames = _get_maxframes(data, dimensions)
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 params1['dynamic'] = dynamic
@@ -194,7 +197,8 @@ def plot_ndarray(
             elif data.ndim == 5:
                 if dimensions is None:
                     dimensions = list(DIMS5D)
-                    print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                    if verbose:
+                        print(f'`dimensions` is None, assuming `data` has {dimensions}')
                 max_frames = _get_maxframes(data, dimensions)
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 params1['dynamic'] = dynamic
