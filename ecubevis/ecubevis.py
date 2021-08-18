@@ -55,15 +55,13 @@ def _get_xy_ratio(data, dimensions):
 
 def plot(data, **kwargs):
     """
-    Plot a 2D, 3D or 4D ``numpy`` array or a tuple of 2D ``numpy`` arrays, or 
-    a 2D, 3D or 4D ``xarray`` Dataset/DataArray.
+    Plot a 2D, 3D, 4D or 5D ``numpy`` array or a tuple of 2D ``numpy`` arrays, 
+    or a 2D, 3D or 4D ``xarray`` Dataset/DataArray.
 
     Parameters
     ----------
-    data : numpy ndarray or tuple or xarray Dataset/Dataarray 
-        2D, 3D or 4D ``numpy`` ndarray or a tuple of 2D ``numpy`` ndarrays, or
-        Xarray object with dimensions: [lat, lon], [time, lat, lon] 
-        or [time, level, lat, lon].
+    data : tuple or numpy.ndarray or xarray.Dataset or xr.DataArray 
+        Input data.
     **kwargs : dict
         Arguments passed to the ``plot_ndarray`` or ``plot_dataset`` functions.
     """
@@ -71,6 +69,10 @@ def plot(data, **kwargs):
         f = plot_ndarray
     elif isinstance(data, (xr.Dataset, xr.DataArray)):
         f = plot_dataset
+    else:
+        msg = f'`data` type (received{type(data)}) does not match any of the '
+        msg += 'accepted types: tuple, numpy.ndarray or xarray.Dataset/DataArray'
+        raise TypeError(msg)
     return f(data, **kwargs)
 
 
