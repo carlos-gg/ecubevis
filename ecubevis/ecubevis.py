@@ -370,7 +370,7 @@ def plot_dataset(
 
     Parameters
     ----------
-    data : xarray Dataset/Dataarray 
+    data : xarray.Dataset or xarray.Dataarray 
         In-memory Xarray object corresponding to a NetCDF/IRIS/GRIB file on disk. 
         Expected dimensions: 2D [lat, lon], 3D array [time, lat, lon] or 4D 
         array [time, level, lat, lon].
@@ -379,8 +379,9 @@ def plot_dataset(
         slider across the dimension set by ``groupby`` or an static mosaic 
         (using ``matplotlib``). 
     variable : str or int or None, optional
-        The name of the variable to be plotted or the index at which it is 
-        located. If None, the first 3D or 4D variable is selected.
+        This applies only to a data input with type xarray.Dataset. It 
+        corresponds to the name of the variable to be plotted or the index at 
+        which it is located. If None, the first 3D or 4D variable is selected.
     slice_time : tuple of int or str or None, optional
         Tuple with initial and final values for slicing the time dimension. If 
         None, the array is not sliced accross this dimension.
@@ -447,50 +448,53 @@ def plot_dataset(
         raise TypeError('`data` must be an Xarray Dataset/Dataarray')  
     
     if isinstance(data, xr.DataArray):
-        data = data.to_dataset()
+        var_array = check_coords(data)
+        shape = var_array.shape
+    elif isinstance(data, xr.Dataset):
+        ### Selecting the variable 
+        if variable is None: # taking the first >=2D data variable
+            for i in data.data_vars:
+                if data.data_vars.__getitem__(i).ndim >= 2:
+                    variable = i
+                    break
+            if verbose == 1:
+                print(f'The argument `variable` has not been set. Choosing '
+                      '`{variable}`, the first >=2D variable in `data` \n')
+        elif isinstance(variable, int):
+            variable = list(data.keys())[variable]
+        else: # otherwise it is the variable name as a string
+            if not isinstance(variable, str):
+                raise ValueError('`variable` must be None, int or str')
 
-    ### Selecting the variable 
-    if variable is None: # taking the first >=2D data variable
-        for i in data.data_vars:
-            if data.data_vars.__getitem__(i).ndim >= 2:
-                variable = i
-                break
-        if verbose == 1:
-            print(f'The argument `variable` has not been set. Choosing '
-                    f'`{variable}`, the first >=2D variable in `data` \n')
-    elif isinstance(variable, int):
-        variable = list(data.keys())[variable]
-    else: # otherwise it is the variable name as a string
-        if not isinstance(variable, str):
-            raise ValueError('`variable` must be None, int or str')
-
-    ### Getting info
-    shape = data.data_vars.__getitem__(variable).shape
-    if len(shape) >= 3:
-        tini = data.data_vars.__getitem__(variable).time[0].values
-        tini = np.datetime_as_string(tini, unit='m')
-        tfin = data.data_vars.__getitem__(variable).time[-1].values
-        tfin = np.datetime_as_string(tfin, unit='m')
-    var_array = check_coords(data)
+        ### Getting info
+        shape = data.data_vars.__getitem__(variable).shape
+        if len(shape) >= 3:
+            tini = data.data_vars.__getitem__(variable).time[0].values
+            tini = np.datetime_as_string(tini, unit='m')
+            tfin = data.data_vars.__getitem__(variable).time[-1].values
+            tfin = np.datetime_as_string(tfin, unit='m')
+        var_array = check_coords(data)
     
-    ### Slicing the array variable
-    if not interactive:
-        if slice_time is None and 'time' in var_array.coords and \
-            var_array.time.size > max_static_subplot_rows:
-            if verbose:
-                print(f'Showing the first {max_static_subplot_rows} time steps '
-                      'according to `max_static_subplot_rows` argument \n')
-            slice_time = (0, max_static_subplot_rows) 
-        if slice_level is None and 'level' in var_array.coords and \
-            var_array.level.size > max_static_subplot_cols:
-            if verbose:
-                print(f'Showing the first {max_static_subplot_cols} level steps '
-                      'according to `max_static_subplot_cols` argument \n')
-            slice_level = (0, max_static_subplot_cols) 
+        ### Enforcing max_static_subplot_rows and max_static_subplot_cols
+        if not interactive:
+            if slice_time is None and 'time' in var_array.coords and \
+                var_array.time.size > max_static_subplot_rows:
+                if verbose:
+                    print(f'Showing the first {max_static_subplot_rows} time steps '
+                          'according to `max_static_subplot_rows` argument \n')
+                slice_time = (0, max_static_subplot_rows) 
+            if slice_level is None and 'level' in var_array.coords and \
+                var_array.level.size > max_static_subplot_cols:
+                if verbose:
+                    print(f'Showing the first {max_static_subplot_cols} level steps '
+                          'according to `max_static_subplot_cols` argument \n')
+                slice_level = (0, max_static_subplot_cols) 
+        var_array = var_array.data_vars.__getitem__(variable)
+    
+    ### Slicing
     var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, 
-                              slice_lon)  
-    var_array = var_array.data_vars.__getitem__(variable)
-    
+                              slice_lon)    
+        
     if var_array.ndim == 4: 
         dimp = '4D'
     elif var_array.ndim == 3: 
