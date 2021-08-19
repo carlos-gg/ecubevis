@@ -450,6 +450,12 @@ def plot_dataset(
     if isinstance(data, xr.DataArray):
         var_array = check_coords(data)
         shape = var_array.shape
+        if len(shape) >= 3:
+            tini = var_array.time[0].values
+            tfin = var_array.time[-1].values
+            tini = np.datetime_as_string(tini, unit='m')
+            tfin = np.datetime_as_string(tfin, unit='m')
+
     elif isinstance(data, xr.Dataset):
         ### Selecting the variable 
         if variable is None: # taking the first >=2D data variable
@@ -465,31 +471,31 @@ def plot_dataset(
         else: # otherwise it is the variable name as a string
             if not isinstance(variable, str):
                 raise ValueError('`variable` must be None, int or str')
-
+        
         ### Getting info
         shape = data.data_vars.__getitem__(variable).shape
         if len(shape) >= 3:
             tini = data.data_vars.__getitem__(variable).time[0].values
-            tini = np.datetime_as_string(tini, unit='m')
             tfin = data.data_vars.__getitem__(variable).time[-1].values
+            tini = np.datetime_as_string(tini, unit='m')
             tfin = np.datetime_as_string(tfin, unit='m')
         var_array = check_coords(data)
-    
-        ### Enforcing max_static_subplot_rows and max_static_subplot_cols
-        if not interactive:
-            if slice_time is None and 'time' in var_array.coords and \
-                var_array.time.size > max_static_subplot_rows:
-                if verbose:
-                    print(f'Showing the first {max_static_subplot_rows} time steps '
-                          'according to `max_static_subplot_rows` argument \n')
-                slice_time = (0, max_static_subplot_rows) 
-            if slice_level is None and 'level' in var_array.coords and \
-                var_array.level.size > max_static_subplot_cols:
-                if verbose:
-                    print(f'Showing the first {max_static_subplot_cols} level steps '
-                          'according to `max_static_subplot_cols` argument \n')
-                slice_level = (0, max_static_subplot_cols) 
         var_array = var_array.data_vars.__getitem__(variable)
+    
+    ### Enforcing max_static_subplot_rows and max_static_subplot_cols
+    if not interactive:
+        if slice_time is None and 'time' in var_array.coords and \
+            var_array.time.size > max_static_subplot_rows:
+            if verbose:
+                print(f'Showing the first {max_static_subplot_rows} time steps '
+                        'according to `max_static_subplot_rows` argument \n')
+            slice_time = (0, max_static_subplot_rows) 
+        if slice_level is None and 'level' in var_array.coords and \
+            var_array.level.size > max_static_subplot_cols:
+            if verbose:
+                print(f'Showing the first {max_static_subplot_cols} level steps '
+                        'according to `max_static_subplot_cols` argument \n')
+            slice_level = (0, max_static_subplot_cols) 
     
     ### Slicing
     var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, 
@@ -505,10 +511,11 @@ def plot_dataset(
         raise TypeError('Variable is neither 2D, 3D nor 4D')
  
     if verbose in [1, 2]:
-        if hasattr(var_array, 'long_name'):
-            print(f'{_bold("Name:")} {variable}, {var_array.long_name}')
-        else:
-            print(f'{_bold("Name:")} {variable}')
+        if hasattr(var_array, 'name') and var_array.name is not None:
+            if hasattr(var_array, 'long_name'):
+                print(f'{_bold("Variable name:")} {var_array.name}, {var_array.long_name}')
+            else:
+                print(f'{_bold("Variable name:")} {var_array.name}')
         if hasattr(var_array, 'units'):
             print(f'{_bold("Units:")} {var_array.units}') 
         print(f'{_bold("Dimensionality:")} {dimp}') 
@@ -519,9 +526,9 @@ def plot_dataset(
             # assuming the min temporal sampling unit is minutes
             tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
             tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m') 
-            print(f'{_bold("Time interval:")} {tini} --> {tfin}')
+            print(f'{_bold("Time interval:")} {tini} {_bold("→")} {tfin}')
             if slice_time is not None:
-                print(f'{_bold("Time interval (sliced array):")} {tini_slice} --> {tfin_slice}\n')
+                print(f'{_bold("Time interval (sliced array):")} {tini_slice} {_bold("→")} {tfin_slice}\n')
     if verbose == 2:
         print(data.coords)
         print(data.data_vars, '\n')
