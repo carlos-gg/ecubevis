@@ -48,8 +48,11 @@ def plot_mosaic_3or4d(
     # use_xarray=True for plot_dataset function
     if use_xarray:
         sizexy_ratio = data.lon.shape[0] / data.lat.shape[0]
-        if data.ndim == 4 and 'level' in data.coords:
-            cols = data.level.shape[0]
+        if data.ndim == 4:
+            for dim in data.dims:
+                if dim not in ['time', 'lat', 'lon']:
+                    dim4 = dim
+            cols = data[dim4].shape[0]
             rows = data.time.shape[0]
         elif data.ndim == 3:
             cols = 1
@@ -119,15 +122,15 @@ def plot_mosaic_3or4d(
                 else:
                     axis = ax[i]
                     image = data[i]
-                if use_xarray and data.ndim != 2:
+                if use_xarray and data.ndim > 2:
                     time = np.datetime64(image.time.values, 'm')
                     axis.set_title(f'$\ittime$={time}', fontsize=10)
             elif rows == 1:
                 axis = ax[j]
                 image = data[j]
-                if use_xarray:
-                    level = image.level.values
-                    axis.set_title(f'$\itlevel$={level}', fontsize=10)
+                if use_xarray and hasattr(image, dim4):
+                    dim4label = image[dim4].values
+                    axis.set_title(f'$\it{dim4}$={dim4label}', fontsize=10)
                 else:
                     if mosaic_orientation == 'row' and subplot_titles is not None:
                         if isinstance(subplot_titles, str):
@@ -136,11 +139,11 @@ def plot_mosaic_3or4d(
                             axis.set_title(subplot_titles[j], fontsize=10)
             else:
                 axis = ax[i, j]
-                image = data[i, j]              
-                if use_xarray:
+                image = data[i, j] 
+                if use_xarray and hasattr(image, dim4):
                     time = np.datetime64(image.time.values, 'm')
-                    level = image.level.values
-                    axis.set_title(f'$\ittime$={time}, $\itlevel$={level}', 
+                    dim4label = image[dim4].values
+                    axis.set_title(f'$\ittime$={time}, $\it{dim4}$={dim4label}', 
                                    fontsize=10)
 
             if logscale:
