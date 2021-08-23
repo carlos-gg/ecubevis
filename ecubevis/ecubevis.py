@@ -110,7 +110,7 @@ def plot_ndarray(
     interactive : bool, optional
         Whether to display an interactive (with ``bokeh``) or static (with
         ``matplotlib``) plot. In the case of a 3D ndarray, a slider will be used 
-        to explore the data across time and/or vertical levels.
+        to explore the data across time and/or additional dimensions.
     dimensions : tuple or Nonr, optional
         The dimensions of the numpy array. Used when ``interactive`` is True. If
         None then the global variables DIMS2D, DIMS3D, DIMS4D or DIMS5D are used.
@@ -291,7 +291,7 @@ def plot_ndarray(
                 if data.shape[0] > max_static_subplot_rows:
                     data = data[:max_static_subplot_rows]
                 mosaic_orientation = 'row'
-            # max static subplots, assuming [time, level, lat, lon]
+            # max static subplots, assuming [time, 4th_dim, lat, lon]
             elif data.ndim == 4:
                 if verbose:
                     print('Plotting a single 4D np.ndarray')
@@ -373,7 +373,7 @@ def plot_dataset(
     data : xarray.Dataset or xarray.Dataarray 
         In-memory Xarray object corresponding to a NetCDF/IRIS/GRIB file on disk. 
         Expected dimensions: 2D [lat, lon], 3D array [time, lat, lon] or 4D 
-        array [time, level, lat, lon].
+        array e.g. [time, level, lat, lon].
     interactive : bool optional
         Whether to display an interactive plot (using ``hvplot``) with a 
         slider across the dimension set by ``groupby`` or an static mosaic 
@@ -415,6 +415,8 @@ def plot_dataset(
         EckertVI, EqualEarth, Gnomonic, LambertAzimuthalEqualArea, 
         NorthPolarStereo, OSNI, SouthPolarStereo. Can be called as 
         ``ecv.crs.PlateCarree()``.
+    data_projection : cartopy.crs projection, optional
+        E.g. crs.PlateCarree().
     extent : tuple of 4 floats
         A tuple with four values in the format (lon_ini, lon_fin, lat_ini, 
         lat_fin). Used to zoom the map to a given bounding box. Valid for static 

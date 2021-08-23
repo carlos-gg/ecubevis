@@ -32,9 +32,8 @@ def fix_latitude(data, dim_name='lat'):
 def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None, 
                   slice_lon=None, drop_dates=False):
     """  
-    Slice an N-dimensional ``xarray`` Dataset across its dimensions (time, level,
-    lat or lon, if present). This function is able to wrap selection assuming 
-    360 degrees, which is not strighformard with ``xarray``. 
+    Slice an N-dimensional ``xarray`` Dataset across its most common dimensions:
+    time, level, lat and lon (if present). 
 
     Parameters
     ----------
@@ -60,7 +59,7 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
     -------
     data : xarray Dataset
         When any of the arguments ``slice_time``, ``slice_level``, 
-        ``slice_lat``, ``slice_lon`` is defined (not None) the returned 
+        ``slice_lat``, ``slice_lon`` is not None the returned 
         ``data`` is the sliced input. If the slicing arguments are None the
         function returns the input Dataset.
 
