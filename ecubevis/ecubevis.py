@@ -381,7 +381,7 @@ def plot_dataset(
     variable : str or int or None, optional
         This applies only to a data input with type xarray.Dataset. It 
         corresponds to the name of the variable to be plotted or the index at 
-        which it is located. If None, the first 3D or 4D variable is selected.
+        which it is located. 
     slice_time : tuple of int or str or None, optional
         Tuple with initial and final values for slicing the time dimension. If 
         None, the array is not sliced accross this dimension.
@@ -460,14 +460,8 @@ def plot_dataset(
 
     elif isinstance(data, xr.Dataset):
         ### Selecting the variable 
-        if variable is None: # taking the first >=2D data variable
-            for i in data.data_vars:
-                if data.data_vars.__getitem__(i).ndim >= 2:
-                    variable = i
-                    break
-            if verbose == 1:
-                print(f'The argument `variable` has not been set. Choosing '
-                      '`{variable}`, the first >=2D variable in `data` \n')
+        if variable is None: 
+            print(f'The argument `variable` has not been set')
         elif isinstance(variable, int):
             variable = list(data.keys())[variable]
         else: # otherwise it is the variable name as a string
