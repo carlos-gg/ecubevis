@@ -168,6 +168,8 @@ def plot_ndarray(
                     dimensions = list(DIMS2D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                else:
+                    dimensions = list(dimensions)
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 max_frames = 1
                 # Dataset((X, Y), Data)
@@ -180,6 +182,8 @@ def plot_ndarray(
                     dimensions = list(DIMS3D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                else:
+                    dimensions = list(dimensions)
                 max_frames = _get_maxframes(data, dimensions)
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 params1['dynamic'] = dynamic
@@ -190,6 +194,8 @@ def plot_ndarray(
                     dimensions = list(DIMS4D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                else:
+                    dimensions = list(dimensions)
                 max_frames = _get_maxframes(data, dimensions)
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 params1['dynamic'] = dynamic
@@ -201,6 +207,8 @@ def plot_ndarray(
                     dimensions = list(DIMS5D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
+                else:
+                    dimensions = list(dimensions)
                 max_frames = _get_maxframes(data, dimensions)
                 sizexy_ratio = _get_xy_ratio(data, dimensions)
                 params1['dynamic'] = dynamic
