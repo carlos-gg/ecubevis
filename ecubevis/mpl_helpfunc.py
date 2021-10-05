@@ -1,4 +1,5 @@
-from matplotlib.pyplot import plot, show, savefig, close, subplots, Axes
+from matplotlib.pyplot import figure, imshow, show, savefig, close, subplots, Axes, axis
+import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from cartopy.mpl.geoaxes import GeoAxes
@@ -6,6 +7,37 @@ import matplotlib.colors as colors
 import cartopy.crs as crs
 import numpy as np
 import xarray as xr
+
+
+def numpy_to_mp4(array, path='./movie.mp4', figwidth=4, dpi=200, cmap='viridis', 
+                 showaxis=True, interval=1000):
+    """
+    Save to disk 3D numpy ndarrays as mp4 movies. 
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        Input array with dimensions [time, y, x].
+
+    """
+    aspect_ratio = array.shape[1] / array.shape[2]
+    figsize = (figwidth / aspect_ratio, figwidth)
+    fig = figure(figsize=figsize, dpi=dpi)
+    if not showaxis:
+        ax = Axes(fig, [0., 0., 1., 1.], frameon=showaxis)
+        fig.add_axes(ax)
+    
+    ims = []
+    for i in range(array.shape[0]):
+        im = imshow(array[i], origin='lower', cmap=cmap, animated=True)
+        if not showaxis:
+            axis('off')
+        ims.append([im])
+
+    ani = animation.ArtistAnimation(fig, ims, interval=interval, blit=True, 
+                                    repeat_delay=1000)
+    ani.save(path)
+    close()
 
 
 def plot_mosaic_3or4d(
