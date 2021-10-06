@@ -12,7 +12,7 @@ import xarray as xr
 def create_animation(
     data, 
     path='./movie.mp4', 
-    figwidth=4, 
+    figure_width=4, 
     dpi=200, 
     cmap='viridis', 
     show_axis=False, 
@@ -27,19 +27,50 @@ def create_animation(
     ----------
     data : numpy.ndarray or tuple or list
         Input data, (tuple of) numpy.ndarray with dimensions [time, y, x].
+    path : str
+        Path to save the clip.
+    figure_width : int, optional
+        (Sub)plot width in inches, used to control the size of the plot.
+    dpi : int, optional
+        Dots per inch.
+    cmap : str
+        Matplotlib colormap.
+    show_axis : boolean, optional
+        Whether to show the axis. 
+    show_colorbar : boolean, optional
+        Whether to show the colorbar.
+    subplot_titles : str or tuple/list
+        List or tuple or single string with the (sub)plot title(s).
+    share_dynamic_range : boolean, optional
+        Whether to share the dynamic range accross all the data. 
+    interval : int, optional
+        Delay between frames in milliseconds. By default, set to 1s.
 
     """
     if isinstance(data, np.ndarray):
-        array = data
+        array = np.squeeze(data)
         n_subplots = 1
     elif isinstance(data, (tuple, list)):
-        array = data[0]
+        array = np.squeeze(data[0])
         n_subplots = len(data)
+    else:
+        raise TypeError('`data` type is not recognized')
+
+    if array.ndim != 3:
+        raise ValueError('this function only supports 3D arrays [time, y, x]')
+
+    if not isinstance(subplot_titles, (str, list, tuple)):
+        raise TypeError('the type of `subplot_titles` is not supported')
+
+    if isinstance(subplot_titles, (tuple, int)):
+        if len(subplot_titles != n_subplots):
+            msg = 'check the lenght of `subplot_titles`, it must match the number of arrays'
+            raise ValueError(msg)
 
     n_time_steps = array.shape[0]
     aspect_ratio = array.shape[1] / array.shape[2]
-    figwidth *= n_subplots
-    figsize = (figwidth / aspect_ratio, figwidth)
+    figure_width *= n_subplots
+    figsize = (figure_width / aspect_ratio, figure_width)
     fig, ax = subplots(nrows=1, ncols=n_subplots, dpi=dpi, frameon=False,
                        figsize=figsize)       
     
@@ -74,10 +105,10 @@ def create_animation(
             if show_colorbar:
                 divider = make_axes_locatable(ax_i)
                 cax = divider.append_axes("right", 
-                                          size="2%",  # width of cax is 2% of axis 
+                                          size="2%",  # width of cax = 2% of axis 
                                           pad=0.1,  # padding is 0.1 inch
                                           axes_class=Axes)
-                cb = fig.colorbar(im, ax=ax_i, cax=cax, drawedges=False, format=None) 
+                cb = fig.colorbar(im, ax=ax_i, cax=cax, drawedges=False) 
                 if not show_axis:
                     cb.outline.set_linewidth(0.0)
                 cb.ax.tick_params(labelsize=6)  
@@ -88,9 +119,9 @@ def create_animation(
     
     fig.tight_layout()
     if not show_axis and not show_colorbar:
-        fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
-    ani = animation.ArtistAnimation(fig, ims, interval=interval, blit=True, 
-                                    repeat_delay=1000)
+        fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, 
+                            hspace=None)
+    ani = animation.ArtistAnimation(fig, ims, interval=interval, blit=True)
     ani.save(path)
     close()
 
