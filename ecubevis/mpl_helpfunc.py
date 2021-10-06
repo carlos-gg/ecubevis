@@ -1,4 +1,4 @@
-from matplotlib.pyplot import figure, imshow, show, savefig, close, subplots, Axes, axis
+from matplotlib.pyplot import show, savefig, close, subplots, Axes
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
@@ -9,31 +9,86 @@ import numpy as np
 import xarray as xr
 
 
-def numpy_to_mp4(array, path='./movie.mp4', figwidth=4, dpi=200, cmap='viridis', 
-                 showaxis=True, interval=1000):
+def create_animation(
+    data, 
+    path='./movie.mp4', 
+    figwidth=4, 
+    dpi=200, 
+    cmap='viridis', 
+    show_axis=False, 
+    show_colorbar=False, 
+    subplot_titles=None, 
+    share_dynamic_range=True, 
+    interval=1000):
     """
-    Save to disk 3D numpy ndarrays as mp4 movies. 
+    Save to disk (a list/tuple of) 3D numpy ndarrays as mp4 movie. 
 
     Parameters
     ----------
-    array : numpy.ndarray
-        Input array with dimensions [time, y, x].
+    data : numpy.ndarray or tuple or list
+        Input data, (tuple of) numpy.ndarray with dimensions [time, y, x].
 
     """
+    if isinstance(data, np.ndarray):
+        array = data
+        n_subplots = 1
+    elif isinstance(data, (tuple, list)):
+        array = data[0]
+        n_subplots = len(data)
+
+    n_time_steps = array.shape[0]
     aspect_ratio = array.shape[1] / array.shape[2]
+    figwidth *= n_subplots
     figsize = (figwidth / aspect_ratio, figwidth)
-    fig = figure(figsize=figsize, dpi=dpi)
-    if not showaxis:
-        ax = Axes(fig, [0., 0., 1., 1.], frameon=showaxis)
-        fig.add_axes(ax)
+    fig, ax = subplots(nrows=1, ncols=n_subplots, dpi=dpi, frameon=False,
+                       figsize=figsize)       
+    
+    if show_colorbar or share_dynamic_range:
+        minvals = [im.min() for im in data]
+        vmin = np.min(minvals)
+        maxvals = [im.max() for im in data]
+        vmax = np.min(maxvals)
+    else:
+        vmin = vmax = None
     
     ims = []
-    for i in range(array.shape[0]):
-        im = imshow(array[i], origin='lower', cmap=cmap, animated=True)
-        if not showaxis:
-            axis('off')
-        ims.append([im])
+    for i in range(n_time_steps):
+        sub_frames = []
+        for j in range(n_subplots):
+            if n_subplots == 1:
+                ax_i = ax
+                image = data[i]
+            else:
+                ax_i = ax[j]
+                image = data[j][i]
+                
+            im = ax_i.imshow(image, origin='lower', cmap=cmap, animated=True, 
+                             interpolation=None, vmin=vmin, vmax=vmax)
+            if not show_axis:
+                ax_i.axis('off')
 
+            if subplot_titles is not None and i == 0:
+                ax_i.set_title(subplot_titles[j])
+                ax_i.title.set_size(20)
+            
+            if show_colorbar:
+                divider = make_axes_locatable(ax_i)
+                cax = divider.append_axes("right", 
+                                          size="2%",  # width of cax is 2% of axis 
+                                          pad=0.1,  # padding is 0.1 inch
+                                          axes_class=Axes)
+                cb = fig.colorbar(im, ax=ax_i, cax=cax, drawedges=False, format=None) 
+                if not show_axis:
+                    cb.outline.set_linewidth(0.0)
+                cb.ax.tick_params(labelsize=6)  
+                    
+            sub_frames.append(im)
+        
+        ims.append(sub_frames)   
+    
+    fig.tight_layout()
+    if not show_axis and not show_colorbar:
+        fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
     ani = animation.ArtistAnimation(fig, ims, interval=interval, blit=True, 
                                     repeat_delay=1000)
     ani.save(path)
@@ -331,7 +386,7 @@ def plot_mosaic_2d(
         wanted_projection = data_projection
         if verbose:
             print(f'Assuming {wanted_projection} projection')
-
+    
     fig, ax = subplots(1, cols, sharex='col', dpi=dpi, figsize=figsize, 
                        constrained_layout=False, 
                        subplot_kw={'projection': wanted_projection})

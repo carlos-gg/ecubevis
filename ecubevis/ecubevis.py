@@ -14,7 +14,7 @@ from .mpl_helpfunc import plot_mosaic_2d, plot_mosaic_3or4d
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-INTERACTIVE_SESSION = True
+INTERACTIVE_SESSION = True 
 DIMS2D = ('lat', 'lon')
 DIMS3D = ('time', 'lat', 'lon')
 DIMS4D = ('time', 'dim', 'lat', 'lon')
@@ -248,12 +248,14 @@ def plot_ndarray(
             width += cb_pad + cb_wid + cb_tick
             params2['colorbar_opts'] = {'width': cb_wid, 'padding': cb_pad}
 
-        return image_stack.opts(hv.opts.Image(cmap=hv_cm,
+        imstack = image_stack.opts(hv.opts.Image(cmap=hv_cm,
                                               colorbar=show_colorbar,
                                               width=width, 
                                               height=height,
                                               tools=['hover'],
                                               **params2)) 
+        # hv.save(imstack, 'test.gif', fmt='gif')  # creates html with animation 
+        return imstack
 
     # Non-interactive (static) matplotlib plot
     else:
