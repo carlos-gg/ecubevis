@@ -132,7 +132,7 @@ def plot_mosaic_3or4d(
     dpi=100, 
     plot_size_px=500,
     cmap='viridis', 
-    logscale=False, 
+    norm=None,
     show_axis=True, 
     save=None, 
     vmin=None, 
@@ -264,15 +264,20 @@ def plot_mosaic_3or4d(
                     axis.set_title(f'$\ittime$={time}, $\it{dim4}$={dim4label}', 
                                    fontsize=10)
 
-            if logscale:
+            if norm == 'log':
                 image += np.abs(image.min())
                 if vmin is None:
                     linthresh = 1e-2
                 else:
                     linthresh = vmin
-                    norm = colors.SymLogNorm(linthresh)   
+                norm = colors.SymLogNorm(linthresh)              
+            elif norm == '0center':
+                norm = colors.TwoSlopeNorm(vmin=image.min().values, vcenter=0., 
+                                           vmax=image.max().values)
             else:
-                norm = None                
+                norm = None
+                params['vmin'] = vmin
+                params['vmax'] = vmax
 
             if coastline and isinstance(axis, GeoAxes):
                 axis.coastlines()
@@ -307,8 +312,7 @@ def plot_mosaic_3or4d(
                 axis.set_global()  
 
             im = axis.imshow(image, origin='lower', interpolation='nearest', 
-                             cmap=cmap, norm=norm, vmin=vmin, vmax=vmax, 
-                             **params)
+                             cmap=cmap, norm=norm, **params)
 
             if show_colorbar:
                 divider = make_axes_locatable(axis)
@@ -353,7 +357,7 @@ def plot_mosaic_2d(
     dpi=100, 
     plot_size_px=600,
     cmap='viridis', 
-    logscale=False, 
+    norm=None, 
     show_axis=True, 
     save=None, 
     vmin=None, 
@@ -434,15 +438,20 @@ def plot_mosaic_2d(
             if subplot_titles is not None:
                 axis.set_title(subplot_titles[j], fontsize=10)
        
-        if logscale:
+        if norm == 'log':
             image += np.abs(image.min())
             if vmin is None:
                 linthresh = 1e-2
             else:
                 linthresh = vmin
-                norm = colors.SymLogNorm(linthresh)   
+            norm = colors.SymLogNorm(linthresh)   
+        elif norm == '0center':
+            norm = colors.TwoSlopeNorm(vmin=image.min().values, vcenter=0., 
+                                       vmax=image.max().values)
         else:
-            norm = None                
+            norm = None
+            params['vmin'] = vmin
+            params['vmax'] = vmax
 
         if coastline and isinstance(axis, GeoAxes):
             axis.coastlines()
@@ -475,7 +484,7 @@ def plot_mosaic_2d(
             axis.set_global()  
 
         im = axis.imshow(image, origin='lower', interpolation='nearest', 
-                         cmap=cmap, norm=norm, vmin=vmin, vmax=vmax, **params)
+                         cmap=cmap, norm=norm, **params) 
 
         if show_colorbar: 
             if not share_colorbar:
