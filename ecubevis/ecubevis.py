@@ -474,7 +474,9 @@ def plot_dataset(
     elif isinstance(data, xr.Dataset):
         ### Selecting the variable 
         if variable is None: 
-            print(f'The argument `variable` has not been set')
+            raise ValueError('The argument `variable` has not been set. '
+                             'Pass a DataArray or set `variable` to \n' 
+                             f'one of the {data.data_vars}')
         elif isinstance(variable, int):
             variable = list(data.keys())[variable]
         else: # otherwise it is the variable name as a string
