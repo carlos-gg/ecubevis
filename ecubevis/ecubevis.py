@@ -15,10 +15,10 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 INTERACTIVE_SESSION = True 
-DIMS2D = ('lat', 'lon')
-DIMS3D = ('time', 'lat', 'lon')
-DIMS4D = ('time', 'dim', 'lat', 'lon')
-DIMS5D = ('time', 'dim', 'lat', 'lon', 'channel')
+DIMS2D = ('y', 'y')
+DIMS3D = ('time', 'y', 'x')
+DIMS4D = ('time', 'dim', 'y', 'x')
+DIMS5D = ('time', 'dim', 'y', 'x', 'channel')
 
 __all__ = ['plot',
            'plot_dataset',
@@ -46,9 +46,9 @@ def _get_maxframes(data, dimensions):
 
 def _get_xy_ratio(data, dimensions):
     for i, dim in enumerate(dimensions):
-        if dim == 'lat':
+        if dim == 'y':
             y = i
-        elif dim == 'lon':
+        elif dim == 'x':
             x = i
     return data.shape[x] / data.shape[y]
     
@@ -229,7 +229,7 @@ def plot_ndarray(
         if vmin is not None and vmax is not None:
             params2['clim'] = (vmin, vmax)
 
-        image_stack = ds.to(hv.Image, kdims=['lon', 'lat'], **params1)
+        image_stack = ds.to(hv.Image, kdims=['x', 'y'], **params1)
         hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames, widget_location='top')
         hv_cm = cmap if isinstance(cmap, str) else cmap.name        
         width = plot_size_px
