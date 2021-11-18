@@ -15,7 +15,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 INTERACTIVE_SESSION = True 
-DIMS2D = ('y', 'y')
+DIMS2D = ('y', 'x')
 DIMS3D = ('time', 'y', 'x')
 DIMS4D = ('time', 'dim', 'y', 'x')
 DIMS5D = ('time', 'dim', 'y', 'x', 'channel')
