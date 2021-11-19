@@ -79,7 +79,7 @@ def plot(data, **kwargs):
 def plot_ndarray(
     data, 
     interactive=None, 
-    dimensions=None,
+    dimensions='auto',
     show_colorbar=True, 
     share_colorbar=False,
     show_axis=True, 
@@ -112,9 +112,10 @@ def plot_ndarray(
         Whether to display an interactive (with ``bokeh``) or static (with
         ``matplotlib``) plot. In the case of a 3D ndarray, a slider will be used 
         to explore the data across time and/or additional dimensions.
-    dimensions : tuple or Nonr, optional
+    dimensions : tuple or str, optional
         The dimensions of the numpy array. Used when ``interactive`` is True. If
-        None then the global variables DIMS2D, DIMS3D, DIMS4D or DIMS5D are used.
+        'auto' then the global variables DIMS2D, DIMS3D, DIMS4D or DIMS5D are 
+        used.
     colorbar : bool optional
         Whether to show the colorbar.
     show_axis : bool optional
@@ -165,7 +166,7 @@ def plot_ndarray(
             raise ValueError(msg)
         elif isinstance(data, np.ndarray):
             if data.ndim == 2:
-                if dimensions is None:
+                if dimensions == 'auto':
                     dimensions = list(DIMS2D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
@@ -179,7 +180,7 @@ def plot_ndarray(
                 ds = hv.Dataset((range(data.shape[1]), range(data.shape[0]), data), 
                                 dimensions[::-1] , 'values')
             elif data.ndim == 3:
-                if dimensions is None:
+                if dimensions == 'auto':
                     dimensions = list(DIMS3D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
@@ -191,7 +192,7 @@ def plot_ndarray(
                 ds = hv.Dataset((range(data.shape[2]), range(data.shape[1]), range(data.shape[0]), 
                                  data), dimensions[::-1] , 'values')
             elif data.ndim == 4:
-                if dimensions is None:
+                if dimensions == 'auto':
                     dimensions = list(DIMS4D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
@@ -204,7 +205,7 @@ def plot_ndarray(
                                  range(data.shape[0]), data),
                                 dimensions[::-1] , 'values')
             elif data.ndim == 5:
-                if dimensions is None:
+                if dimensions == 'auto':
                     dimensions = list(DIMS5D)
                     if verbose:
                         print(f'`dimensions` is None, assuming `data` has {dimensions}')
