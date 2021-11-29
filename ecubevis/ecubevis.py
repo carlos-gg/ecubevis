@@ -225,11 +225,6 @@ def plot_ndarray(
         if vmax == 'max':
             vmax = data.max()
         
-        params2 = dict()
-        # not needed in recent version of holoviews (can take clim=None)
-        if vmin is not None and vmax is not None:
-            params2['clim'] = (vmin, vmax)
-
         image_stack = ds.to(hv.Image, kdims=['x', 'y'], **params1)
         hv.output(backend='bokeh', dpi=dpi, max_frames=max_frames, widget_location='top')
         hv_cm = cmap if isinstance(cmap, str) else cmap.name        
@@ -237,6 +232,7 @@ def plot_ndarray(
         height = int(np.round(width / sizexy_ratio))
 
         # Compensating the width to accommodate the colorbar
+        params2 = dict()
         if show_colorbar:
             cb_wid = 15
             cb_pad = 5
@@ -255,6 +251,7 @@ def plot_ndarray(
                                               width=width, 
                                               height=height,
                                               tools=['hover'],
+                                              clim=(vmin, vmax), 
                                               **params2)) 
         # hv.save(imstack, 'test.gif', fmt='gif')  # creates html with animation 
         return imstack
@@ -272,7 +269,7 @@ def plot_ndarray(
                     print('Plotting a tuple of 2D np.ndarrays')
                 for i in range(len(data)):
                     # checking the elements are 2d 
-                    if not np.squeeze(data[i]).ndim == 2: # and data[i].shape[2] != 3: (excepting the case of 3 channels)
+                    if not np.squeeze(data[i]).ndim == 2: 
                         raise TypeError('tuple has non-2D arrays')
 
             return plot_mosaic_2d(
@@ -572,6 +569,7 @@ def plot_dataset(
             dynamic=dynamic, 
             colorbar=show_colorbar, 
             cmap=cmap, 
+            clim=(vmin,vmax),
             shared_axes=True, 
             legend=True, 
             logz=True if norm == 'log' else False, 
