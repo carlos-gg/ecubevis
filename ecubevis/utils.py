@@ -5,8 +5,11 @@ __all__ = ['slice_dataset',
            'fix_latitude']
 
 
-COORDS_STAND = ['lat', 'lon', 'level', 'time', 'lat', 'lon', 'lat', 'lon']
-COORDS_ALT = ['latitude', 'longitude', 'height', 'frequency', 'y', 'x', 'Y', 'X']
+COORDS_y = {'lat': ['latitude', 'y', 'Y']}
+COORDS_x = {'lon': ['longitude', 'x', 'X']}
+COORDS_z = {'level': ['height', 'z', 'Z']}
+COORDS_time = {'time': ['frequency']}
+COORDS = {**COORDS_x, **COORDS_y, **COORDS_z, **COORDS_time}
 
 
 def fix_longitude(data, dim_name='lon'):
@@ -96,18 +99,41 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
     return data
 
 
-def check_coords(dataset, allow_unknown_coords=True):
+def check_coords(data, allow_nonstandard_coords=True):
     """
     """
-    if not allow_unknown_coords:
-        for c in dataset.coords:
-            if c not in COORDS_STAND + COORDS_ALT:
-                msg = f'Xarray Dataset/Dataarray contains unknown coordinates. '
-                msg += f'Must be one of: {COORDS_STAND} or {COORDS_ALT}'
+    if not allow_nonstandard_coords:
+        for c in data.coords:
+            if c not in COORDS.keys() or 'time' not in c:
+                msg = f'Input xarray Dataset/DataArray contains unknown coordinates. '
+                msg += f'Must be one of: '
+                msg += f'{COORDS.keys()}'
+                msg += f' or a string containing `time`'
                 raise ValueError(msg)
 
-    for i, altname in enumerate(COORDS_ALT):
-        if altname in dataset.coords:
-            dataset = dataset.rename({COORDS_ALT[i]: COORDS_STAND[i]})
-    return dataset
+    # standardizing coordinate names
+    for c in data.coords:
+        for stand_name, alt_names in COORDS.items():
+            if c in alt_names:
+                data = data.rename({c: stand_name})
+
+    # checking if a variation of 'time' is present
+    for c in data.coords:
+        if 'time' in c:
+            data = data.rename({c: 'time'})
+
+    # making sure there are lat, lon coordinates, checking data.dims
+    if 'lon' not in data.coords:
+        for i in data.dims:
+            for stand_name, alt_names in COORDS_x.items():
+                if i in alt_names:
+                    data = data.assign_coords({'lon': data[i]})
+
+    if 'lat' not in data.coords:
+        for i in data.dims:
+            for stand_name, alt_names in COORDS_y.items():
+                if i in alt_names:
+                    data = data.assign_coords({'lat': data[i]})
+
+    return data
 

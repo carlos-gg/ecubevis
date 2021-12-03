@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.lib.arraysetops import isin
 import holoviews as hv
 import xarray as xr
 import hvplot.xarray 
@@ -577,7 +576,7 @@ def plot_dataset(
             project=project, 
             projection=wanted_projection, 
             global_extent=global_extent, 
-            coastline=coastline, 
+            coastline=coastline,
             **params)
         
     ### Static mosaic with matplotlib
