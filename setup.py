@@ -37,15 +37,15 @@ setup(
         'earth-data', 
         ],
     install_requires=[
-        'numpy ~= 1.21.4',
-        'matplotlib ~= 3.0',
-        'xarray ~= 0.20.2',
-        'hvplot ~= 0.7.2',
-        'holoviews ~= 1.13.2',
+        'numpy',
+        'matplotlib',
+        'xarray',
+        'hvplot',
+        'holoviews',
         'cartopy',
         'geoviews',
-        'bokeh ~= 2.0.1',
-        'pyviz_comms ~= 0.7.6'
+        'bokeh',
+        'pyviz_comms'
         ],
     classifiers=[
         'Development Status :: 4 - Beta',
