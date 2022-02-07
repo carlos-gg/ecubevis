@@ -37,9 +37,9 @@ setup(
         'earth-data', 
         ],
     install_requires=[
-        'numpy ~= 1.22.2',
+        'numpy ~= 1.21.4',
         'matplotlib ~= 3.0',
-        'xarray ~= 0.21.1',
+        'xarray ~= 0.20.2',
         'hvplot ~= 0.7.2',
         'holoviews ~= 1.13.2',
         'cartopy',
@@ -50,10 +50,9 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
-        #'Operating System :: MacOS :: MacOS X',
         'Operating System :: POSIX :: Linux',
         'Natural Language :: English',
-        #'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache v2.0 License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering'
