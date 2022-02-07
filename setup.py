@@ -29,18 +29,17 @@ setup(
     author='Carlos Alberto Gomez Gonzalez',
     #license='MIT',
     author_email='carlos.gomez@bsc.es',
-    #url='https://earth.bsc.es/gitlab/cgome1/ecubevis',
+    url='https://github.com/carlgogo/ecubevis',
     keywords=[
         'visualization', 
         'interactive', 
         'plotting', 
         'earth-data', 
-        'package'
         ],
     install_requires=[
-        'numpy ~= 1.18',
-        'matplotlib >= 2.2',
-        'xarray ~= 0.15.1',
+        'numpy ~= 1.22.2',
+        'matplotlib ~= 3.0',
+        'xarray ~= 0.21.1',
         'hvplot ~= 0.7.2',
         'holoviews ~= 1.13.2',
         'cartopy',
