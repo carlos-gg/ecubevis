@@ -462,11 +462,6 @@ def plot_dataset(
     if isinstance(data, xr.DataArray):
         var_array = check_coords(data)
         shape = var_array.shape
-        if len(shape) >= 3:
-            tini = var_array.time[0].values
-            tfin = var_array.time[-1].values
-            tini = np.datetime_as_string(tini, unit='m')
-            tfin = np.datetime_as_string(tfin, unit='m')
 
     elif isinstance(data, xr.Dataset):
         ### Selecting the variable 
@@ -482,11 +477,6 @@ def plot_dataset(
         
         ### Getting info
         shape = data.data_vars.__getitem__(variable).shape
-        if len(shape) >= 3:
-            tini = data.data_vars.__getitem__(variable).time[0].values
-            tfin = data.data_vars.__getitem__(variable).time[-1].values
-            tini = np.datetime_as_string(tini, unit='m')
-            tfin = np.datetime_as_string(tfin, unit='m')
         var_array = check_coords(data)
         var_array = var_array.data_vars.__getitem__(variable)
     
@@ -506,17 +496,7 @@ def plot_dataset(
             slice_level = (0, max_static_subplot_cols) 
     
     ### Slicing
-    var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, 
-                              slice_lon)    
-        
-    if var_array.ndim == 4: 
-        dimp = '4D'
-    elif var_array.ndim == 3: 
-        dimp = '3D'
-    elif var_array.ndim == 2:
-        dimp = '2D'
-    else:
-        raise TypeError('Variable is neither 2D, 3D nor 4D')
+    var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, slice_lon)    
  
     if verbose in [1, 2]:
         if hasattr(var_array, 'name') and var_array.name is not None:
@@ -526,17 +506,10 @@ def plot_dataset(
                 print(f'{_bold("Variable name:")} {var_array.name}')
         if hasattr(var_array, 'units'):
             print(f'{_bold("Units:")} {var_array.units}') 
-        print(f'{_bold("Dimensionality:")} {dimp}') 
+        print(f'{_bold("Dimensionality:")} {var_array.ndim}D') 
         print(f'{_bold("Shape:")} {shape}')
         if slice_lat is not None or slice_lon is not None or slice_time is not None or slice_level is not None:
             print(f'{_bold("Shape (sliced array):")} {var_array.shape}')
-        if dimp == '3D' or dimp == '4D':
-            # assuming the min temporal sampling unit is minutes
-            tini_slice = np.datetime_as_string(var_array.time[0].values, unit='m')
-            tfin_slice = np.datetime_as_string(var_array.time[-1].values, unit='m') 
-            print(f'{_bold("Time interval:")} {tini} {_bold("→")} {tfin}')
-            if slice_time is not None:
-                print(f'{_bold("Time interval (sliced array):")} {tini_slice} {_bold("→")} {tfin_slice}\n')
     if verbose == 2:
         print(data.coords)
         print(data.data_vars, '\n')
