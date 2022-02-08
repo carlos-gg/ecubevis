@@ -8,7 +8,7 @@ __all__ = ['slice_dataset',
 COORDS_y = {'lat': ['latitude', 'y', 'Y']}
 COORDS_x = {'lon': ['longitude', 'x', 'X']}
 COORDS_z = {'level': ['height', 'z', 'Z']}
-COORDS_time = {'time': ['frequency']}
+COORDS_time = {'time': ['frequency', 'month', 'year', 'day', 'hour']}
 COORDS = {**COORDS_x, **COORDS_y, **COORDS_z, **COORDS_time}
 
 
