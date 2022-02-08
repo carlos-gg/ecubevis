@@ -325,6 +325,7 @@ def plot_ndarray(
                 data, 
                 show_colorbar=show_colorbar, 
                 share_colorbar=share_colorbar,
+                share_dynamic_range=share_dynamic_range,
                 dpi=dpi, 
                 plot_size_px=plot_size_px,
                 cmap=cmap, 
@@ -356,9 +357,10 @@ def plot_dataset(
     slice_lat=None, 
     slice_lon=None, 
     show_colorbar=True, 
+    share_colorbar=False,
+    share_dynamic_range=False, 
     cmap='viridis', 
     norm=None,
-    share_dynamic_range=False, 
     vmin=None, 
     vmax=None, 
     wanted_projection=None, 
@@ -554,18 +556,12 @@ def plot_dataset(
             **params)
         
     ### Static mosaic with matplotlib
-    else:                
-        if share_dynamic_range:
-            if vmin is None:
-                vmin = var_array.min().compute()
-                vmin = np.array(vmin)
-            if vmax is None:
-                vmax = var_array.max().compute()   
-                vmax = np.array(vmax)
-        
+    else:                     
         return plot_mosaic_3or4d(
             var_array, 
             show_colorbar=show_colorbar, 
+            share_colorbar=share_colorbar,
+            share_dynamic_range=share_dynamic_range,
             dpi=dpi, 
             plot_size_px=plot_size_px,
             cmap=cmap, 

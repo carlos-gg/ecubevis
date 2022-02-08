@@ -77,11 +77,11 @@ def create_animation(
     fig, ax = subplots(nrows=1, ncols=n_subplots, dpi=dpi, frameon=False,
                        figsize=figsize)       
     
-    if show_colorbar or share_dynamic_range:
+    if (show_colorbar and n_subplots > 1) or share_dynamic_range:
         minvals = [im.min() for im in data]
         vmin = np.min(minvals)
         maxvals = [im.max() for im in data]
-        vmax = np.min(maxvals)
+        vmax = np.max(maxvals)
     else:
         vmin = vmax = None
     
@@ -133,6 +133,7 @@ def plot_mosaic_3or4d(
     data, 
     show_colorbar=True,
     share_colorbar=False, 
+    share_dynamic_range=False,
     dpi=100, 
     plot_size_px=500,
     cmap='viridis', 
@@ -224,6 +225,15 @@ def plot_mosaic_3or4d(
     else:
         figsize = (plot_size_inches * cols * colorbarzone, plot_size_inches * rows / sizexy_ratio)
     
+    if share_colorbar:
+        if (vmin is None or vmax is None) and not share_dynamic_range:
+            raise ValueError('When `share_colorbar=True`, `vmin` and `vmax` '
+                             'must be given or `share_dynamic_range=True`')
+                             
+    if share_dynamic_range:
+        vmin = data.min()
+        vmax = data.max()
+
     if wanted_projection is None and extent_known:
         wanted_projection = data_projection
         if verbose:
@@ -412,16 +422,16 @@ def plot_mosaic_2d(
             plot_title = None
     else:
         raise TypeError('`data` must be a single 2D array or tuple of 2D arrays')
-    
-    if share_colorbar:
-        if (vmin is None or vmax is None) and not share_dynamic_range:
-            raise ValueError('When `share_colorbar=True`, `vmin` and `vmax` '
-                             'must be given or `share_dynamic_range=True`')
 
     if len(list_data) > 1 and subplot_titles is not None:
         if len(list_data) != len(subplot_titles) or not isinstance(subplot_titles, tuple):
             raise ValueError('`subplot_titles` must be a tuple with length '
                             'equal to that of `data`')
+    
+    if share_colorbar:
+        if (vmin is None or vmax is None) and not share_dynamic_range:
+            raise ValueError('When `share_colorbar=True`, `vmin` and `vmax` '
+                             'must be given or `share_dynamic_range=True`')
 
     if share_dynamic_range:
         minvals = [im.min() for im in list_data]
