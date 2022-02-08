@@ -48,13 +48,14 @@ setup(
         'pyviz_comms'
         ],
     classifiers=[
-        'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
         'Operating System :: POSIX :: Linux',
         'Natural Language :: English',
         'License :: OSI Approved :: Apache v2.0 License',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7',
-        'Topic :: Scientific/Engineering'
+        'Topic :: Scientific/Engineering',
+        'Topic :: Scientific/Engineering :: Visualization'
         ],
 )
