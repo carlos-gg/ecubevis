@@ -241,7 +241,10 @@ def plot_mosaic_3or4d(
                     axis = ax[i]
                     image = data[i]
                 if use_xarray and data.ndim > 2:
-                    time = np.datetime64(image.time.values, 'm')
+                    try:
+                        time = np.datetime64(image.time.values, 'm')
+                    except:
+                        time = image.time.values
                     axis.set_title(f'$\ittime$={time}', fontsize=10)
             elif rows == 1:
                 axis = ax[j]
@@ -259,7 +262,10 @@ def plot_mosaic_3or4d(
                 axis = ax[i, j]
                 image = data[i, j] 
                 if use_xarray and hasattr(image, dim4):
-                    time = np.datetime64(image.time.values, 'm')
+                    try:
+                        time = np.datetime64(image.time.values, 'm')
+                    except:
+                        time = image.time.values
                     dim4label = image[dim4].values
                     axis.set_title(f'$\ittime$={time}, $\it{dim4}$={dim4label}', 
                                    fontsize=10)

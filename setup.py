@@ -45,7 +45,8 @@ setup(
         'cartopy',
         'geoviews',
         'bokeh',
-        'pyviz_comms'
+        'pyviz_comms',
+        'pyproj'
         ],
     classifiers=[
         'Intended Audience :: Science/Research',
