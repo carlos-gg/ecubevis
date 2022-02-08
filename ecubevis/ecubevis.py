@@ -324,6 +324,7 @@ def plot_ndarray(
             return plot_mosaic_3or4d(
                 data, 
                 show_colorbar=show_colorbar, 
+                share_colorbar=share_colorbar,
                 dpi=dpi, 
                 plot_size_px=plot_size_px,
                 cmap=cmap, 

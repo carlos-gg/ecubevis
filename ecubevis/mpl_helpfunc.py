@@ -9,6 +9,9 @@ import numpy as np
 import xarray as xr
 
 
+__all__ = ['create_animation']
+
+
 def create_animation(
     data, 
     path='./movie.mp4', 
@@ -128,7 +131,8 @@ def create_animation(
 
 def plot_mosaic_3or4d(
     data, 
-    show_colorbar=True, 
+    show_colorbar=True,
+    share_colorbar=False, 
     dpi=100, 
     plot_size_px=500,
     cmap='viridis', 
@@ -321,17 +325,32 @@ def plot_mosaic_3or4d(
                              cmap=cmap, norm=norm, **params)
 
             if show_colorbar:
-                divider = make_axes_locatable(axis)
-                # the width of cax is 2% of axis and the padding is 0.1 inch
-                cax = divider.append_axes("right", size="5%", pad=0.1, 
-                                          axes_class=Axes)
-                cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
-                                  format=None) #format='%1.2e'
-                cb.outline.set_linewidth(0.1)
-                cb.ax.tick_params(labelsize=8)
-                if use_xarray and hasattr(data, 'units'):
-                    cb.set_label(f'{data.name} [{data.units}]', rotation=90, 
-                                 labelpad=10)
+                if not share_colorbar:
+                    divider = make_axes_locatable(axis)
+                    # the width of cax is 2% of axis and the padding is 0.1 inch
+                    cax = divider.append_axes("right", size="5%", pad=0.1, 
+                                            axes_class=Axes)
+                    cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
+                                    format=None) #format='%1.2e'
+                    cb.outline.set_linewidth(0.1)
+                    cb.ax.tick_params(labelsize=8)
+                    if use_xarray and hasattr(data, 'units'):
+                        cb.set_label(f'{data.name} [{data.units}]', rotation=90, 
+                                     labelpad=10)
+                else:
+                    if j+1 == cols:
+                        fig.subplots_adjust(right=0.98)
+                        axpos = axis.get_position()
+                        cbar_pad = axpos.width * 0.1
+                        cbar_width = axpos.width * 0.1
+                        cax = fig.add_axes([axpos.x0 + axpos.width + cbar_pad, 
+                                            axpos.y0, 
+                                            cbar_width, 
+                                            axpos.height])
+                        cb = fig.colorbar(im, ax=axis, cax=cax, drawedges=False, 
+                                        format=None) #format='%1.2e'
+                        cb.outline.set_linewidth(0.1)
+                        cb.ax.tick_params(labelsize=8)
 
             if not show_axis:
                 axis.set_axis_off()
