@@ -10,6 +10,18 @@ Install ``ecubevis`` from pypi:
 pip install ecubevis
 ```
 
+If installing ``cartopy`` with pip is not working, use conda: 
+
+```
+conda install cartopy
+```
+
+If cartopy kills your Jupyter notebook kernel try this:
+
+```
+pip install shapely --upgrade --force-reinstall --no-binary shapely
+```
+
 ## How to use
 
 Import the library:
