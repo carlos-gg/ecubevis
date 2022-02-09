@@ -2,19 +2,13 @@
 
 `ecubevis`: Earth CUBE VISualization with Python. Intended for the interactive exploration of n-dimensional (2D, 3D, 4D or 5D spatio-temporal) arrays on Jupyterlab. Supports both ``xarray.Dataset/DataArray`` (with metadata) or ``numpy.ndarray`` objects. 
 
-## For BSC-ES users
+## How to install
 
-To use `ecubevis` on the POWER-CTE cluster (P9), use the following modules to solve the dependencies:
+Install ``ecubevis`` from pypi:
 
 ```
-module use /gpfs/projects/bsc32/software/rhel/7.4/ppc64le/POWER9/modules/all/
-module load Cartopy/0.17.0-foss-2018b-Python-3.7.0
-module load jupyterlab/3.0.9-foss-2018b-Python-3.7.0
+pip install ecubevis
 ```
-
-The modules should have the same names on Nord3 (just "use" the Nord3 modules repository). 
-
-That's it, you are ready to import `ecubevis` from this folder (assumining you've clones or downloaded this git repository). 
 
 ## How to use
 
