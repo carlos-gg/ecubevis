@@ -42,11 +42,12 @@ setup(
         'xarray',
         'hvplot',
         'holoviews',
+        'pyproj',
         'cartopy',
         'geoviews',
         'bokeh',
         'pyviz_comms',
-        'pyproj'
+        'joblib'
         ],
     classifiers=[
         'Intended Audience :: Science/Research',
