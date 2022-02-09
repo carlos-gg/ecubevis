@@ -446,15 +446,6 @@ def plot_dataset(
     https://hvplot.holoviz.org/user_guide/Gridded_Data.html
     https://hvplot.holoviz.org/user_guide/Geographic_Data.html    
 
-    TODO
-    ----
-    [1]
-    for hvplot: col='time'
-    https://hvplot.holoviz.org/user_guide/Subplots.html
-
-    [2]
-    https://pyviz-dev.github.io/holoviz/tutorial/Composing_Plots.html
-
     """     
     if interactive is None:
         interactive = True if INTERACTIVE_SESSION else False
