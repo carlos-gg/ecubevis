@@ -27,7 +27,7 @@ setup(
     long_description=README,
     long_description_content_type='text/markdown',
     author='Carlos Alberto Gomez Gonzalez',
-    #license='MIT',
+    license='Apache v2.0',
     author_email='carlos.gomez@bsc.es',
     url='https://github.com/carlgogo/ecubevis',
     keywords=[
