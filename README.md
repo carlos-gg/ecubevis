@@ -1,3 +1,4 @@
+[![Python - Version](https://img.shields.io/badge/PYTHON-3.6+-red?style=flat&logo=python&logoColor=white)](https://pepy.tech/project/ecubevis) 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/carlgogo/ecubevis/blob/master/ecubevis.ipynb)
 
 # Welcome to the repository of ecubevis
