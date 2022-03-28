@@ -47,7 +47,8 @@ setup(
         'geoviews',
         'bokeh',
         'pyviz_comms',
-        'joblib'
+        'joblib',
+        'netcdf4'
         ],
     classifiers=[
         'Intended Audience :: Science/Research',
