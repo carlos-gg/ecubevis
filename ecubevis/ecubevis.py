@@ -359,6 +359,7 @@ def plot_dataset(
     slice_lon=None, 
     show_colorbar=True, 
     cmap='viridis', 
+    show_grid=True,
     show_axis=True,
     norm=None,
     vmin=None, 
@@ -374,9 +375,10 @@ def plot_dataset(
     dynamic=True, 
     slider_controls=False,
     dpi=100, 
-    max_static_subplot_rows=10,
-    max_static_subplot_cols=10,
     plot_size_px=600, 
+    plot_size=4,
+    aspect=4,
+    colorbar_pad=0.05,
     verbose=True):
     """
     Plot a 2D, 3D or 4D ``xarray`` Dataset/DataArray (e.g., NetCDF, IRIS or 
@@ -478,21 +480,6 @@ def plot_dataset(
         var_array = check_coords(data)
         var_array = var_array.data_vars.__getitem__(variable)
     
-    ### Enforcing max_static_subplot_rows and max_static_subplot_cols
-    if not interactive:
-        if slice_time is None and 'time' in var_array.coords and \
-            var_array.time.size > max_static_subplot_rows:
-            if verbose:
-                print(f'Showing the first {max_static_subplot_rows} time steps '
-                        'according to `max_static_subplot_rows` argument \n')
-            slice_time = (0, max_static_subplot_rows) 
-        if slice_level is None and 'level' in var_array.coords and \
-            var_array.level.size > max_static_subplot_cols:
-            if verbose:
-                print(f'Showing the first {max_static_subplot_cols} level steps '
-                        'according to `max_static_subplot_cols` argument \n')
-            slice_level = (0, max_static_subplot_cols) 
-    
     ### Slicing
     var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, slice_lon)    
  
@@ -517,13 +504,8 @@ def plot_dataset(
     ### interactive plotting with slider(s) using bokeh
     if interactive:
         hv.extension('bokeh')
-        if show_coastline or wanted_projection is not None:
-            width = plot_size_px
-            height = int(np.round(width / sizexy_ratio))
-        else:
-            width = plot_size_px
-            height = int(np.round(width / sizexy_ratio))
-
+        width = plot_size_px
+        height = int(np.round(width / sizexy_ratio))
         params = dict(height=height, width=width)
         project = False if wanted_projection is None else True
 
@@ -549,49 +531,83 @@ def plot_dataset(
             **params)
         
     ### Static mosaic with matplotlib
-    else: 
-        if var_array.ndim == 4:
-            ncols = var_array[col].shape[0]
-            nrows = var_array[row].shape[0]
-        elif var_array.ndim == 3:
-            ncols = 1
-            nrows = var_array[row].shape[0]
-        elif var_array.ndim == 2:
-            ncols = 1
-            nrows = 1
-        plot_size_inches = plot_size_px / dpi 
-        if var_array.ndim in [2, 3]:
-            figsize = (plot_size_inches * ncols, plot_size_inches / sizexy_ratio)  
-        elif var_array.ndim == 4:
-            figsize = (plot_size_inches * ncols, plot_size_inches * nrows / sizexy_ratio)
-        
-        col=col if var_array.ndim == 4 and hasattr(var_array, col) else None
-        row=row if var_array.ndim > 2 and hasattr(var_array, row) else None
+    else:
+        if var_array.ndim in [3, 4]: 
+            if var_array.shape[0] > 10 or (var_array.ndim == 4 and var_array.shape[1] > 10):
+                raise ValueError('Check the shape of your array. Try slicing it!')
+
+        col = col if var_array.ndim == 4 and hasattr(var_array, col) else None
+        row = row if var_array.ndim > 2 and hasattr(var_array, row) else None
         col_wrap=col_wrap
         plt.rcParams["figure.dpi"] = dpi
 
         if var_array.ndim == 2:
             params = dict()
         else:
-            params = dict(row=row, col=col, norm=norm, col_wrap=col_wrap, 
-                          cmap=cmap, figsize=figsize)
+            # figsize = (aspect * size, size)
+            params = dict(
+                row=row, 
+                col=col, 
+                norm=norm, 
+                col_wrap=col_wrap, 
+                cmap=cmap, 
+                vmin=vmin,
+                vmax=vmax,
+                size=plot_size, 
+                aspect=sizexy_ratio if wanted_projection is None else aspect,
+                cbar_kwargs={"orientation": "vertical", 
+                             "shrink": 1.0,
+                             "aspect": 20,
+                             "pad": colorbar_pad})
         if data_projection is not None:
             params['transform'] = data_projection
         if wanted_projection is not None:
             params['subplot_kws'] = {"projection": wanted_projection}
+
         fig = var_array.plot(**params)
 
-        # We have to set the map's options on all axes
+        # setting the map's options on all axes
+        lon_ini = int(np.floor(var_array.lon[0].values))
+        lon_fin = int(np.ceil(var_array.lon[-1].values))
+        lat_ini = int(np.floor(var_array.lat[0].values))
+        lat_fin = int(np.ceil(var_array.lat[-1].values))
+        if extent is None:
+            extent = (lon_ini, lon_fin, lat_ini, lat_fin)
+        
+        if hasattr(fig, 'cbar'):
+            fig.cbar.outline.set_linewidth(0.2)
+        elif hasattr(fig, 'colorbar'): 
+            fig.colorbar.outline.set_linewidth(0.2)
+
         if var_array.ndim == 2:
             axes = [fig.axes]
-        else:
+        elif var_array.ndim > 2:
             axes = fig.axes.flat
 
         for ax in axes:
-            if show_coastline and wanted_projection is not None and data_projection is not None:
-                ax.coastlines() 
-            if extent is not None:
-                ax.set_extent(extent)
-            if global_extent:
-                ax.set_global()
-                
+            if wanted_projection is not None and data_projection is not None:
+                if show_coastline:
+                    ax.coastlines() 
+                if extent is not None:
+                    ax.set_extent(extent)
+                if global_extent:
+                    ax.set_global()
+                if show_axis:
+                    # <GeoAxesSubplot:title={'center':'time = 2013-01-01'}, xlabel='lon', ylabel='Latitude [degrees_north]'>
+                    # labels not showing up
+
+                    # https://scitools.org.uk/cartopy/docs/latest/matplotlib/gridliner.html
+                    gl = ax.gridlines(alpha=0.2, draw_labels=True, dms=True, x_inline=False, y_inline=False)
+                    gl.ylines = show_grid
+                    gl.xlines = show_grid
+                    gl.top_labels = False
+                    gl.right_labels = False
+            
+            ax.spines["right"].set_linewidth(0.2)
+            ax.spines["left"].set_linewidth(0.2)
+            ax.spines["top"].set_linewidth(0.2)
+            ax.spines["bottom"].set_linewidth(0.2)
+            if "geo" in ax.spines:
+                ax.spines["geo"].set_linewidth(0.2)
+
+        return fig
