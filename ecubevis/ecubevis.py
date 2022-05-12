@@ -5,6 +5,7 @@ import hvplot.xarray
 import cartopy.crs as crs
 import holoviews as hv
 from matplotlib import cm, interactive
+import matplotlib.pyplot as plt
 
 from .io import load_transform_mfdataset
 from .utils import check_coords, slice_dataset
@@ -90,7 +91,7 @@ def plot_ndarray(
     dpi=100,
     plot_size_px=500,
     dynamic=True,
-    coastline=False,
+    show_coastline=False,
     horizontal_padding=0.2,
     vertical_padding=0.1,
     max_static_subplot_rows=10,
@@ -285,7 +286,7 @@ def plot_ndarray(
                 vmin=vmin, 
                 vmax=vmax, 
                 transparent=False, 
-                coastline=coastline, 
+                coastline=show_coastline, 
                 horizontal_padding=horizontal_padding,
                 subplot_titles=subplot_titles,
                 plot_title=plot_title,
@@ -335,7 +336,7 @@ def plot_ndarray(
                 vmin=vmin, 
                 vmax=vmax, 
                 transparent=False, 
-                coastline=coastline, 
+                coastline=show_coastline, 
                 mosaic_orientation=mosaic_orientation,
                 horizontal_padding=horizontal_padding,
                 vertical_padding=vertical_padding,
@@ -357,25 +358,25 @@ def plot_dataset(
     slice_lat=None, 
     slice_lon=None, 
     show_colorbar=True, 
-    share_colorbar=False,
-    share_dynamic_range=False, 
     cmap='viridis', 
+    show_axis=True,
     norm=None,
     vmin=None, 
     vmax=None, 
     wanted_projection=None, 
-    data_projection=crs.PlateCarree(),
-    coastline=False, 
+    data_projection=None,
+    show_coastline=False, 
     global_extent=False, 
     extent=None,
+    col='level',
+    row='time',
+    col_wrap=None,
     dynamic=True, 
     slider_controls=False,
-    dpi=80, 
+    dpi=100, 
     max_static_subplot_rows=10,
     max_static_subplot_cols=10,
     plot_size_px=600, 
-    horizontal_padding=0.05,
-    vertical_padding=0.15,
     verbose=True):
     """
     Plot a 2D, 3D or 4D ``xarray`` Dataset/DataArray (e.g., NetCDF, IRIS or 
@@ -389,8 +390,7 @@ def plot_dataset(
         array e.g. [time, level, lat, lon].
     interactive : bool optional
         Whether to display an interactive plot (using ``hvplot``) with a 
-        slider across the dimension set by ``groupby`` or an static mosaic 
-        (using ``matplotlib``). 
+        slider or an static mosaic (using ``matplotlib``). 
     variable : str or int or None, optional
         This applies only to a data input with type xarray.Dataset. It 
         corresponds to the name of the variable to be plotted or the index at 
@@ -411,8 +411,6 @@ def plot_dataset(
         Whether to show a colorbar.
     cmap : str or matplotlib.cm, optional
         Colormap, eg. viridis" or ecv.cm.viridis.  
-    share_dynamic_range : bool optional
-        Whether to share the dynamic range among mosaic subplots.
     vmin : float or None
         Min value to be displayed.
     vmax : float or None
@@ -434,6 +432,12 @@ def plot_dataset(
         A tuple with four values in the format (lon_ini, lon_fin, lat_ini, 
         lat_fin). Used to zoom the map to a given bounding box. Valid for static 
         plots, when coastline is shown. 
+    col : str, optional
+        Dimension to use on columns when interactive=False.
+    row : str, optional
+        Dimension to use on rows when interactive=False.
+    col_wrap : int, optional
+        Number of columns. 
     dpi : int
         [interactive=False] DPI of the mosaic figure.
     plot_size_px : int optional
@@ -508,14 +512,12 @@ def plot_dataset(
         print(data.coords)
         print(data.data_vars, '\n')
     
-    sizey = var_array.lat.shape[0]
-    sizex = var_array.lon.shape[0]
-    sizexy_ratio = sizex / sizey
+    sizexy_ratio = var_array.lon.shape[0] / var_array.lat.shape[0]
 
     ### interactive plotting with slider(s) using bokeh
     if interactive:
         hv.extension('bokeh')
-        if coastline or wanted_projection is not None:
+        if show_coastline or wanted_projection is not None:
             width = plot_size_px
             height = int(np.round(width / sizexy_ratio))
         else:
@@ -543,31 +545,53 @@ def plot_dataset(
             project=project, 
             projection=wanted_projection, 
             global_extent=global_extent, 
-            coastline=coastline,
+            coastline=show_coastline,
             **params)
         
     ### Static mosaic with matplotlib
-    else:                     
-        return plot_mosaic_3or4d(
-            var_array, 
-            show_colorbar=show_colorbar, 
-            share_colorbar=share_colorbar,
-            share_dynamic_range=share_dynamic_range,
-            dpi=dpi, 
-            plot_size_px=plot_size_px,
-            cmap=cmap, 
-            norm=norm,
-            show_axis=True, 
-            save=None, 
-            vmin=vmin, 
-            vmax=vmax, 
-            transparent=False, 
-            coastline=coastline, 
-            wanted_projection=wanted_projection,
-            data_projection=data_projection,
-            global_extent=global_extent,
-            extent=extent,
-            horizontal_padding=horizontal_padding,
-            vertical_padding=vertical_padding,
-            verbose=verbose)
+    else: 
+        if var_array.ndim == 4:
+            ncols = var_array[col].shape[0]
+            nrows = var_array[row].shape[0]
+        elif var_array.ndim == 3:
+            ncols = 1
+            nrows = var_array[row].shape[0]
+        elif var_array.ndim == 2:
+            ncols = 1
+            nrows = 1
+        plot_size_inches = plot_size_px / dpi 
+        if var_array.ndim in [2, 3]:
+            figsize = (plot_size_inches * ncols, plot_size_inches / sizexy_ratio)  
+        elif var_array.ndim == 4:
+            figsize = (plot_size_inches * ncols, plot_size_inches * nrows / sizexy_ratio)
+        
+        col=col if var_array.ndim == 4 and hasattr(var_array, col) else None
+        row=row if var_array.ndim > 2 and hasattr(var_array, row) else None
+        col_wrap=col_wrap
+        plt.rcParams["figure.dpi"] = dpi
+
+        if var_array.ndim == 2:
+            params = dict()
+        else:
+            params = dict(row=row, col=col, norm=norm, col_wrap=col_wrap, 
+                          cmap=cmap, figsize=figsize)
+        if data_projection is not None:
+            params['transform'] = data_projection
+        if wanted_projection is not None:
+            params['subplot_kws'] = {"projection": wanted_projection}
+        fig = var_array.plot(**params)
+
+        # We have to set the map's options on all axes
+        if var_array.ndim == 2:
+            axes = [fig.axes]
+        else:
+            axes = fig.axes.flat
+
+        for ax in axes:
+            if show_coastline and wanted_projection is not None and data_projection is not None:
+                ax.coastlines() 
+            if extent is not None:
+                ax.set_extent(extent)
+            if global_extent:
+                ax.set_global()
                 
