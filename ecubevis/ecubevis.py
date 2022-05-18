@@ -379,6 +379,9 @@ def plot_dataset(
     plot_size=4,
     aspect=4,
     colorbar_pad=0.05,
+    colorbar_shrink=0.8,
+    colorbar_orientation='v',
+    colorbar_aspect=30,
     subplot_titles=None,
     ylabel_pad=-0.1,
     xlabel_pad=-0.15,
@@ -544,10 +547,25 @@ def plot_dataset(
         col_wrap=col_wrap
         plt.rcParams["figure.dpi"] = dpi
 
-        if var_array.ndim == 2:
-            params = dict()
+        if show_colorbar:
+            if colorbar_orientation == 'h':
+                colorbar_orientation = 'horizontal'
+            elif colorbar_orientation == 'v':
+                colorbar_orientation = 'vertical'
+
+            cbar_kwargs={"orientation": colorbar_orientation, "shrink": colorbar_shrink, 
+                         "aspect": colorbar_aspect, "pad": colorbar_pad}
         else:
-            # figsize = (aspect * size, size)
+            cbar_kwargs = None
+
+        if var_array.ndim == 2:
+            params = dict(
+                cmap=cmap, 
+                vmin=vmin,
+                vmax=vmax,
+                add_colorbar=show_colorbar,
+                cbar_kwargs=cbar_kwargs)
+        else:
             params = dict(
                 row=row, 
                 col=col, 
@@ -558,10 +576,8 @@ def plot_dataset(
                 vmax=vmax,
                 size=plot_size, 
                 aspect=sizexy_ratio if wanted_projection is None else aspect,
-                cbar_kwargs={"orientation": "vertical", 
-                             "shrink": 1.0,
-                             "aspect": 20,
-                             "pad": colorbar_pad})
+                add_colorbar=show_colorbar,
+                cbar_kwargs=cbar_kwargs)
         if data_projection is not None:
             params['transform'] = data_projection
         if wanted_projection is not None:
@@ -569,6 +585,12 @@ def plot_dataset(
 
         fig = var_array.plot(**params)
 
+        if show_colorbar:
+            if hasattr(fig, 'cbar'):
+                fig.cbar.outline.set_linewidth(0.2)
+            elif hasattr(fig, 'colorbar'): 
+                fig.colorbar.outline.set_linewidth(0.2)
+        
         # setting the map's options on all axes
         lon_ini = int(np.floor(var_array.lon[0].values))
         lon_fin = int(np.ceil(var_array.lon[-1].values))
@@ -576,11 +598,6 @@ def plot_dataset(
         lat_fin = int(np.ceil(var_array.lat[-1].values))
         if extent is None:
             extent = (lon_ini, lon_fin, lat_ini, lat_fin)
-        
-        if hasattr(fig, 'cbar'):
-            fig.cbar.outline.set_linewidth(0.2)
-        elif hasattr(fig, 'colorbar'): 
-            fig.colorbar.outline.set_linewidth(0.2)
 
         if var_array.ndim == 2:
             axes = [fig.axes]
