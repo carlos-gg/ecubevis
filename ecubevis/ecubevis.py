@@ -379,6 +379,9 @@ def plot_dataset(
     plot_size=4,
     aspect=4,
     colorbar_pad=0.05,
+    subplot_titles=None,
+    ylabel_pad=-0.1,
+    xlabel_pad=-0.15,
     verbose=True):
     """
     Plot a 2D, 3D or 4D ``xarray`` Dataset/DataArray (e.g., NetCDF, IRIS or 
@@ -583,8 +586,16 @@ def plot_dataset(
             axes = [fig.axes]
         elif var_array.ndim > 2:
             axes = fig.axes.flat
+        
+        if subplot_titles is not None:
+            if subplot_titles == '':
+                subplot_titles = len(axes) * [subplot_titles]
+            if len(subplot_titles) != len(axes):
+                raise ValueError(f'`subplot_titles` must be equal to {len(axes)}, got {len(subplot_titles)}')
 
-        for ax in axes:
+        for i, ax in enumerate(axes):
+            if subplot_titles is not None:
+                ax.set_title(subplot_titles[i])
             if wanted_projection is not None and data_projection is not None:
                 if show_coastline:
                     ax.coastlines() 
@@ -592,16 +603,23 @@ def plot_dataset(
                     ax.set_extent(extent)
                 if global_extent:
                     ax.set_global()
-                if show_axis:
+                if show_axis: 
+                    # not showing the ylabel and xlabel, why?
                     # <GeoAxesSubplot:title={'center':'time = 2013-01-01'}, xlabel='lon', ylabel='Latitude [degrees_north]'>
-                    # labels not showing up
-
+                    if col_wrap is not None and i % col_wrap == 0:
+                        ax.text(ylabel_pad, 0.55, 'lat', rotation='vertical', transform=ax.transAxes)  
+                    elif col_wrap is None:
+                        ax.text(ylabel_pad, 0.55, 'lat', rotation='vertical', transform=ax.transAxes)                       
+                    ax.text(0.5, xlabel_pad, 'lon', rotation='horizontal', transform=ax.transAxes)
+                
                     # https://scitools.org.uk/cartopy/docs/latest/matplotlib/gridliner.html
-                    gl = ax.gridlines(alpha=0.2, draw_labels=True, dms=True, x_inline=False, y_inline=False)
+                    gl = ax.gridlines(alpha=0.2, draw_labels=True, dms=True)
                     gl.ylines = show_grid
                     gl.xlines = show_grid
                     gl.top_labels = False
                     gl.right_labels = False
+                    gl.xlabel_style = dict(fontsize=7)
+                    gl.ylabel_style = dict(fontsize=7)
             
             ax.spines["right"].set_linewidth(0.2)
             ax.spines["left"].set_linewidth(0.2)
