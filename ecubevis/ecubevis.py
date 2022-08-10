@@ -467,7 +467,6 @@ def plot_dataset(
     if isinstance(data, xr.DataArray):
         var_array = check_coords(data)
         shape = var_array.shape
-
     elif isinstance(data, xr.Dataset):
         ### Selecting the variable 
         if variable is None: 
@@ -485,6 +484,11 @@ def plot_dataset(
         var_array = check_coords(data)
         var_array = var_array.data_vars.__getitem__(variable)
     
+    if show_coastline and (wanted_projection is None or data_projection is None):
+        print('When `show_coastline=True`, both `data_projection` and `wanted_projection` must be provided. Assuming crs.PlateCarree() projection')
+        wanted_projection = crs.PlateCarree()
+        data_projection = crs.PlateCarree()
+
     ### Slicing
     var_array = slice_dataset(var_array, slice_time, slice_level, slice_lat, slice_lon)    
  
