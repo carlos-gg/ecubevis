@@ -10,7 +10,7 @@ __all__ = ['load_transform_mfdataset']
 
 
 def load_transform_mfdataset(dir_path, dim='time', transform_func=None, 
-                             transform_params={}, n_jobs=1):
+                             transform_params={}, n_jobs=1, verbose=0):
     """
     Read a multi-file distributed N-dimensional ``xarray`` dataset.
 
@@ -27,6 +27,9 @@ def load_transform_mfdataset(dir_path, dim='time', transform_func=None,
         Parameters of the transform function.
     n_jobs : int, optional
         Number of jobs.
+    verbose : int, optional
+        The verbosity level:  if non zero, progress messages are printed. This 
+        parameter is past to joblib.Parallel. 
 
     Returns
     -------
@@ -42,8 +45,7 @@ def load_transform_mfdataset(dir_path, dim='time', transform_func=None,
         with xr.open_dataset(file_path) as ds:
             if transform_func is not None:
                 ds = transform_func(ds, **transform_params)
-            # load all data from the transformed dataset, to ensure we can
-            # use it after closing each original file
+            # load the transformed dataset to ensure we can use it after closing each file
             ds.load()
             return ds
 
@@ -51,7 +53,9 @@ def load_transform_mfdataset(dir_path, dim='time', transform_func=None,
         dir_path = dir_path + '/*.nc'
     paths = sorted(glob(dir_path))
     print(f'Pre-processing {len(paths)} paths with `{transform_func.__name__}` function using {n_jobs} jobs')
-    datasets = Parallel(n_jobs=n_jobs)(delayed(process_one_path)(file_path) for file_path in paths)
+    if verbose:
+        print('Files:', [path.split('/')[-1] for path in paths])
+    datasets = Parallel(n_jobs=n_jobs, verbose=verbose)(delayed(process_one_path)(file_path) for file_path in paths)
     print(f'Concatenating the preprocessed datasets along {dim}')
     combined = xr.concat(datasets, dim)
     return combined

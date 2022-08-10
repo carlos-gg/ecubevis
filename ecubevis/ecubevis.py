@@ -7,7 +7,6 @@ import holoviews as hv
 from matplotlib import cm, interactive
 import matplotlib.pyplot as plt
 
-from .io import load_transform_mfdataset
 from .utils import check_coords, slice_dataset
 from .mpl_helpfunc import plot_mosaic_2d, plot_mosaic_3or4d
 
