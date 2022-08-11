@@ -64,7 +64,12 @@ def plot(data, variable=None, **kwargs):
     **kwargs : dict
         Arguments passed to the ``plot_ndarray`` or ``plot_dataset`` functions.
     """
-    if isinstance(data, (np.ndarray, tuple)):
+    if isinstance(data, tuple):
+        if isinstance(data[0], np.ndarray):
+            out = plot_ndarray(data, **kwargs)
+        elif isinstance(data[0], (xr.Dataset, xr.DataArray)):
+            out = plot_dataset(data, variable=variable, **kwargs)
+    elif isinstance(data, np.ndarray):
         out = plot_ndarray(data, **kwargs)
     elif isinstance(data, (xr.Dataset, xr.DataArray)):
         out = plot_dataset(data, variable=variable, **kwargs)
@@ -368,8 +373,8 @@ def plot_dataset(
     show_coastline=False, 
     global_extent=False, 
     extent=None,
-    col='level',
-    row='time',
+    col=None,
+    row=None,
     col_wrap=None,
     dynamic=True, 
     slider_controls=False,
@@ -461,10 +466,17 @@ def plot_dataset(
     if interactive is None:
         interactive = True if INTERACTIVE_SESSION else False
     
-    if not isinstance(data, (xr.Dataset, xr.DataArray)):
-        raise TypeError('`data` must be an Xarray Dataset/Dataarray')  
+    if not isinstance(data, (tuple, xr.Dataset, xr.DataArray)):
+        raise TypeError('`data` must be a tuple of 2d grids or a single xr.Dataset/DataArray')  
     
-    if isinstance(data, xr.DataArray):
+    if isinstance(data, tuple):
+        if np.squeeze(data[0].values).ndim > 2:
+            raise ValueError(f'Plotting of a tuple of xr.DataArrays is supported only for 2d grids, got {np.squeeze(data[0].values).ndim}')
+        for arr in data:
+            arr = check_coords(arr)
+        var_array = xr.concat(data, dim='vars')  # assuming all 2d grids have the same dimension
+        shape = var_array.shape
+    elif isinstance(data, xr.DataArray):
         var_array = check_coords(data)
         shape = var_array.shape
     elif isinstance(data, xr.Dataset):
@@ -545,9 +557,6 @@ def plot_dataset(
             if var_array.shape[0] > 10 or (var_array.ndim == 4 and var_array.shape[1] > 10):
                 raise ValueError('Check the shape of your array. Try slicing it!')
 
-        col = col if var_array.ndim == 4 and hasattr(var_array, col) else None
-        row = row if var_array.ndim > 2 and hasattr(var_array, row) else None
-        col_wrap=col_wrap
         plt.rcParams["figure.dpi"] = dpi
 
         if show_colorbar:
@@ -558,29 +567,19 @@ def plot_dataset(
 
             cbar_kwargs={"orientation": colorbar_orientation, "shrink": colorbar_shrink, 
                          "aspect": colorbar_aspect, "pad": colorbar_pad}
+            if isinstance(data, tuple):
+                cbar_kwargs['label'] = ''
         else:
             cbar_kwargs = None
 
         if var_array.ndim == 2:
-            params = dict(
-                cmap=cmap, 
-                vmin=vmin,
-                vmax=vmax,
-                add_colorbar=show_colorbar,
-                cbar_kwargs=cbar_kwargs)
+            params = dict(cmap=cmap, vmin=vmin,vmax=vmax, add_colorbar=show_colorbar,
+                          cbar_kwargs=cbar_kwargs)
         else:
-            params = dict(
-                row=row, 
-                col=col, 
-                norm=norm, 
-                col_wrap=col_wrap, 
-                cmap=cmap, 
-                vmin=vmin,
-                vmax=vmax,
-                size=plot_size, 
-                aspect=sizexy_ratio if wanted_projection is None else aspect,
-                add_colorbar=show_colorbar,
-                cbar_kwargs=cbar_kwargs)
+            params = dict(row=row, col=col, norm=norm, col_wrap=col_wrap, 
+                          cmap=cmap, vmin=vmin, vmax=vmax, size=plot_size, 
+                          aspect=sizexy_ratio if wanted_projection is None else aspect,
+                          add_colorbar=show_colorbar, cbar_kwargs=cbar_kwargs)
         if data_projection is not None:
             params['transform'] = data_projection
         if wanted_projection is not None:
@@ -593,14 +592,13 @@ def plot_dataset(
                 fig.cbar.outline.set_linewidth(0.2)
             elif hasattr(fig, 'colorbar'): 
                 fig.colorbar.outline.set_linewidth(0.2)
+            if isinstance(data, tuple):
+                fig.cbar.set_label('')
         
         # setting the map's options on all axes
-        lon_ini = int(np.floor(var_array.lon[0].values))
-        lon_fin = int(np.ceil(var_array.lon[-1].values))
-        lat_ini = int(np.floor(var_array.lat[0].values))
-        lat_fin = int(np.ceil(var_array.lat[-1].values))
         if extent is None:
-            extent = (lon_ini, lon_fin, lat_ini, lat_fin)
+            extent = (var_array.lon[0].values, var_array.lon[-1].values, 
+                      var_array.lat[0].values, var_array.lat[-1].values - 1)
 
         if var_array.ndim == 2:
             axes = [fig.axes]
