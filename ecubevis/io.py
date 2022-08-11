@@ -10,7 +10,8 @@ __all__ = ['load_transform_mfdataset']
 
 
 def load_transform_mfdataset(dir_path, dim='time', transform_func=None, 
-                             transform_params={}, n_jobs=1, verbose=0):
+                             transform_params={}, drop_variables=None, 
+                             n_jobs=1, verbose=0):
     """
     Read a multi-file distributed N-dimensional ``xarray`` dataset.
 
@@ -42,9 +43,12 @@ def load_transform_mfdataset(dir_path, dim='time', transform_func=None,
     """
     def process_one_path(file_path):
         # use a context manager, to ensure the file gets closed after use
-        with xr.open_dataset(file_path) as ds:
+        with xr.open_dataset(file_path, drop_variables=drop_variables) as ds:
             if transform_func is not None:
-                ds = transform_func(ds, **transform_params)
+                try:
+                    ds = transform_func(ds, **transform_params)
+                except:
+                    raise RuntimeError(f'Problem executing `transform_func` on {file_path}')
             # load the transformed dataset to ensure we can use it after closing each file
             ds.load()
             return ds
