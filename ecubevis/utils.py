@@ -12,24 +12,20 @@ COORDS_time = {'time': ['frequency', 'month', 'year', 'day', 'hour']}
 COORDS = {**COORDS_x, **COORDS_y, **COORDS_z, **COORDS_time}
 
 
-def fix_longitude(data, dim_name='lon'):
+def fix_longitude(data):
     """ 
-    If the data central longitude is 180º (0º to 360º) then we set it to 0º 
-    (-180º to 180º)
+    If the data central longitude is 180º [0º:360º], we set it to 0º [-180º:180º]
     """
-    data.coords[dim_name] = (data.coords[dim_name] + 180) % 360 - 180
+    data.coords['lon'] = (data.coords['lon'] + 180) % 360 - 180
     data = data.sortby(data.lon)
     return data
 
 
-def fix_latitude(data, dim_name='lat'):
+def fix_latitude(data):
     """
     Reverse along latitude, 90º to -90º -> -90º to 90º
     """
-    if dim_name == 'lat':
-        return data.reindex(lat=data.coords[dim_name][::-1])
-    elif dim_name == 'latitude':
-        return data.reindex(latitude=data.coords[dim_name][::-1])
+    return data.reindex(lat=data.coords['lat'][::-1])
 
 
 def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None, 
@@ -49,11 +45,13 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
         Tuple with initial and final values for slicing the level dimension. If 
         None, the array is not sliced accross this dimension.
     slice_lat : tuple of int or None, optional
-        Tuple with initial and final values for slicing the lat dimension. If 
-        None, the array is not sliced accross this dimension.
+        Tuple with initial and final values for slicing the latitude. Takes 
+        values from -90 to 90. If None, the array is not sliced accross this 
+        dimension.
     slice_lon : tuple of int or None, optional
-        Tuple with initial and final values for slicing the lon dimension. If 
-        None, the array is not sliced accross this dimension.
+        Tuple with initial and final values for slicing the longitude. Takes
+        values from -180 to 180. If None, the array is not sliced accross this 
+        dimension.
     drop_dates : bool, optional
         If True the time interval in ``slice_time`` will be removed. The default
         is False, meaning that the time interval is selected.
@@ -91,9 +89,13 @@ def slice_dataset(data, slice_time=None, slice_level=None, slice_lat=None,
         data = data.isel(level=slice(*slice_level))
 
     if slice_lat is not None and 'lat' in data.coords:
+        if slice_lat[1] > 90:
+            raise ValueError('`slice_lat` takes values from -90 to 90')
         data = data.sel(lat=slice(*slice_lat))
 
     if slice_lon is not None and 'lon' in data.coords:
+        if slice_lon[1] > 180:
+            raise ValueError('`slice_lon` takes values from -180 to 180')
         data = data.sel(lon=slice(*slice_lon))
 
     return data
