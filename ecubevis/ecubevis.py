@@ -379,16 +379,14 @@ def plot_dataset(
     dynamic=True, 
     slider_controls=False,
     dpi=100, 
-    plot_size_px=600, 
-    plot_size=4,
-    aspect=4,
+    plot_size_px=400, 
     colorbar_pad=0.05,
     colorbar_shrink=0.8,
     colorbar_orientation='v',
     colorbar_aspect=30,
     subplot_titles=None,
-    ylabel_pad=-0.1,
-    xlabel_pad=-0.15,
+    ylabel_pad=-0.16,
+    xlabel_pad=-0.16,
     verbose=True):
     """
     Plot a 2D, 3D or 4D ``xarray`` Dataset/DataArray (e.g., NetCDF, IRIS or 
@@ -455,6 +453,12 @@ def plot_dataset(
     plot_size_px : int optional
         Value of the figure width in pixels, used to scale up or down the size 
         of the ``hvplot`` or ``matplotlib`` figure.
+    slider_controls : bool, optional
+        Whether to show the slider controls when ``interactive=True``.
+    ylabel_pad : float, optional
+        Padding for the location of the Y label (lat).
+    xlabel_pad : float, optional
+        Padding for the location of the X label (lon).
 
     Notes
     -----
@@ -482,8 +486,7 @@ def plot_dataset(
     elif isinstance(data, xr.Dataset):
         ### Selecting the variable 
         if variable is None: 
-            raise ValueError('The argument `variable` has not been set. '
-                             'Pass a DataArray or set `variable` to \n' 
+            raise ValueError('The argument `variable` has not been set. Pass a DataArray or set `variable` to \n' 
                              f'one of the {data.data_vars}')
         elif isinstance(variable, int):
             variable = list(data.keys())[variable]
@@ -521,7 +524,7 @@ def plot_dataset(
         print(data.data_vars, '\n')
     
     sizexy_ratio = var_array.lon.shape[0] / var_array.lat.shape[0]
-
+        
     ### interactive plotting with slider(s) using bokeh
     if interactive:
         hv.extension('bokeh')
@@ -553,6 +556,11 @@ def plot_dataset(
         
     ### Static mosaic with matplotlib
     else:
+        var_array = np.squeeze(var_array)
+        plot_size_inches = plot_size_px / dpi     
+        width = plot_size_inches
+        height = int(np.round(width / sizexy_ratio))
+        
         if var_array.ndim in [3, 4]: 
             if var_array.shape[0] > 10 or (var_array.ndim == 4 and var_array.shape[1] > 10):
                 raise ValueError('Check the shape of your array. Try slicing it!')
@@ -576,15 +584,26 @@ def plot_dataset(
             params = dict(cmap=cmap, vmin=vmin,vmax=vmax, add_colorbar=show_colorbar,
                           cbar_kwargs=cbar_kwargs)
         else:
+            if row is None:
+                if 'time' in var_array.coords and col != 'time':
+                    print('`row` is None. `row` set to `time`')
+                    row = 'time'
+            if col is None:
+                if 'level' in var_array.coords and row != 'level':
+                    print('`col` is None. `col` set to `level`')
+                    col = 'level'
+            if col is None and row is None:
+                raise ValueError('Provide `row` or `col`')
+
             params = dict(row=row, col=col, norm=norm, col_wrap=col_wrap, 
-                          cmap=cmap, vmin=vmin, vmax=vmax, size=plot_size, 
-                          aspect=sizexy_ratio if wanted_projection is None else aspect,
+                          cmap=cmap, vmin=vmin, vmax=vmax, size=plot_size_inches, 
+                          aspect=sizexy_ratio if wanted_projection is None else plot_size_inches,
                           add_colorbar=show_colorbar, cbar_kwargs=cbar_kwargs)
         if data_projection is not None:
             params['transform'] = data_projection
         if wanted_projection is not None:
             params['subplot_kws'] = {"projection": wanted_projection}
-
+        
         fig = var_array.plot(**params)
 
         if show_colorbar:
