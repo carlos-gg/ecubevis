@@ -5,8 +5,8 @@ __all__ = ['slice_dataset',
            'fix_latitude']
 
 
-COORDS_y = {'lat': ['latitude', 'y', 'Y']}
-COORDS_x = {'lon': ['longitude', 'x', 'X']}
+COORDS_y = {'lat': ['latitude', 'y', 'Y', 'south_north']}
+COORDS_x = {'lon': ['longitude', 'x', 'X', 'west_east']}
 COORDS_z = {'level': ['height', 'z', 'Z']}
 COORDS_time = {'time': ['frequency', 'month', 'year', 'day', 'hour']}
 COORDS = {**COORDS_x, **COORDS_y, **COORDS_z, **COORDS_time}

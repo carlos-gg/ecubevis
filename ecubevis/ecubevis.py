@@ -66,9 +66,9 @@ def plot(data, variable=None, **kwargs):
     """
     if isinstance(data, tuple):
         if isinstance(data[0], np.ndarray):
-            out = plot_ndarray(data, **kwargs)
+            out = plot_ndarray(data, interactive=False, **kwargs)
         elif isinstance(data[0], (xr.Dataset, xr.DataArray)):
-            out = plot_dataset(data, variable=variable, **kwargs)
+            out = plot_dataset(data, interactive=False, variable=variable, **kwargs)
     elif isinstance(data, np.ndarray):
         out = plot_ndarray(data, **kwargs)
     elif isinstance(data, (xr.Dataset, xr.DataArray)):
@@ -355,8 +355,8 @@ def plot_ndarray(
 
 def plot_dataset(
     data, 
-    interactive=None, 
     variable=None, 
+    interactive=None, 
     slice_time=None, 
     slice_level=None, 
     slice_lat=None, 
@@ -478,7 +478,8 @@ def plot_dataset(
             raise ValueError(f'Plotting of a tuple of xr.DataArrays is supported only for 2d grids, got {np.squeeze(data[0].values).ndim}')
         for arr in data:
             arr = check_coords(arr)
-        var_array = xr.concat(data, dim='vars')  # assuming all 2d grids have the same dimension
+        var_array = xr.concat(data, dim='channel')  # assuming all 2d grids have the same size
+        var_array = var_array.drop_vars('time')
         shape = var_array.shape
     elif isinstance(data, xr.DataArray):
         var_array = check_coords(data)
