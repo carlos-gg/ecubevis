@@ -594,7 +594,10 @@ def plot_dataset(
                     print('`col` is None. `col` set to `level`')
                     col = 'level'
             if col is None and row is None:
-                raise ValueError('Provide `row` or `col`')
+                if 'channel' in var_array.dims:
+                    col = 'channel'
+                else:
+                    raise ValueError('Provide `row` or `col`')
 
             params = dict(row=row, col=col, norm=norm, col_wrap=col_wrap, 
                           cmap=cmap, vmin=vmin, vmax=vmax, size=plot_size_inches, 
