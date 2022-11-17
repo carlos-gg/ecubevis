@@ -119,11 +119,6 @@ def check_coords(data, allow_nonstandard_coords=True):
             if c in alt_names:
                 data = data.rename({c: stand_name})
 
-    # checking if a variation of 'time' is present
-    for c in data.coords:
-        if 'time' in c:
-            data = data.rename({c: 'time'})
-
     # making sure there are lat, lon coordinates, checking data.dims
     if 'lon' not in data.coords:
         for i in data.dims:

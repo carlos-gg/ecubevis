@@ -65,10 +65,12 @@ def plot(data, variable=None, **kwargs):
         Arguments passed to the ``plot_ndarray`` or ``plot_dataset`` functions.
     """
     if isinstance(data, tuple):
+        if 'interactive' not in kwargs.keys():
+            kwargs['interactive'] = False
         if isinstance(data[0], np.ndarray):
-            out = plot_ndarray(data, interactive=False, **kwargs)
+            out = plot_ndarray(data, **kwargs)
         elif isinstance(data[0], (xr.Dataset, xr.DataArray)):
-            out = plot_dataset(data, interactive=False, variable=variable, **kwargs)
+            out = plot_dataset(data, variable=variable, **kwargs)
     elif isinstance(data, np.ndarray):
         out = plot_ndarray(data, **kwargs)
     elif isinstance(data, (xr.Dataset, xr.DataArray)):
@@ -479,7 +481,10 @@ def plot_dataset(
         for arr in data:
             arr = check_coords(arr)
         var_array = xr.concat(data, dim='channel')  # assuming all 2d grids have the same size
-        var_array = var_array.drop_vars('time')
+        if 'time' in var_array.coords:
+            var_array = var_array.drop_vars('time')
+        if 'level' in var_array.coords:
+            var_array = var_array.drop_vars('level')
         shape = var_array.shape
     elif isinstance(data, xr.DataArray):
         var_array = check_coords(data)
